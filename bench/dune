@@ -1,0 +1,3 @@
+(executable
+ (name quick)
+ (libraries sorting unix))
