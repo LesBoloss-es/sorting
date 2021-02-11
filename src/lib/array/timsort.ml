@@ -91,6 +91,38 @@ let rec merge_lo
   end
 
 
+let rec merge_hi
+  cmp
+  dest ofs
+  src0 ofs0 len0
+  src1 ofs1 len1
+=
+  assert (Array.length dest >= ofs + len0 + len1);
+  assert (Array.length src0 >= ofs0 + len0);
+  assert (Array.length src1 >= ofs1 + len1);
+  assert (len0 >= 0);
+  assert (len1 >= 0);
+  if len0 = 0 then
+    Array.blit src1 ofs1 dest ofs len1
+  else if len1 = 0 then
+    Array.blit src0 ofs0 dest ofs len0
+  else if cmp src0.(ofs0 + len0 - 1) src1.(ofs1 + len1 - 1) <= 0 then begin
+    dest.(ofs + len0 + len1 - 1) <- src1.(ofs1 + len1 - 1);
+    merge_hi
+      cmp
+      dest ofs
+      src0 ofs0 len0
+      src1 ofs1 (len1 - 1)
+  end else begin
+    dest.(ofs + len0 + len1 - 1) <- src0.(ofs0 + len0 - 1);
+    merge_hi
+      cmp
+      dest ofs
+      src0 ofs0 (len0 - 1)
+      src1 ofs1 len1
+  end
+
+
 let merge cmp t =
   if t = [||] then
     fun _ _ -> 0, 0
@@ -99,20 +131,21 @@ let merge cmp t =
     fun (ofs0, len0) (ofs1, len1) ->
       assert (ofs0 + len0 = ofs1);
       assert (ofs1 + len1 <= Array.length t);
-      (* if len0 < len1 then begin *)
+      if len0 < len1 then begin
         Array.blit t ofs0 buffer 0 len0;
         merge_lo
           cmp
           t ofs0
           buffer 0 len0
           t ofs1 len1
-      (* end else begin *)
-        (* Array.blit t ofs1 buffer 0 len1; *)
-        (* merge_hi *)
-          (* t ofs0 *)
-          (* t ofs0 len0 *)
-          (* buffer 0 len1 *)
-      (* end *);
+      end else begin
+        Array.blit t ofs1 buffer 0 len1;
+        merge_hi
+          cmp
+          t ofs0
+          t ofs0 len0
+          buffer 0 len1
+      end;
       ofs0, len0 + len1
 
 let rec merge_all cmp t = function
