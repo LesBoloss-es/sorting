@@ -1,3 +1,3 @@
 (tests
  (names timsort)
- (libraries sorting_array))
+ (libraries sorting_array genlib))

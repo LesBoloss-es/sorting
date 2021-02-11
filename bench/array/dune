@@ -1,0 +1,3 @@
+(executable
+ (name timsort)
+ (libraries sorting_array genlib unix))
