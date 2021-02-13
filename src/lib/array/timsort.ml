@@ -165,29 +165,48 @@ let timsort (cmp: 'a cmp) (t: 'a array) =
   let merge_all = merge_all cmp t in
   let next_run = next_run cmp t in
 
-  let rec sort offset (stack: (int * int) list) =
-    match stack with
-    | ((_, len0) as r0) :: r1 :: ((_, len2) as r2) :: stack
-      when len2 < len0 ->
-      sort offset (r0 :: merge r2 r1 :: stack)
+  let rec sort offset (stack0 : (int * int) list) =
+    (* stackn = stack starting with rn *)
+    match stack0 with
+    | ((_, len0) as r0) :: (((_, len1) as r1) :: stack2) ->
+      (
+        match stack2 with
+        | ((_, len2) as r2) :: stack3 ->
+          (
+            if len2 < len0 then
+              sort offset (r0 :: merge r2 r1 :: stack3)
+            else if len1 <= len0 then
+              sort offset (merge r1 r0 :: stack2)
+            else if len2 <= len1 + len0 then
+              sort offset (merge r1 r0 :: stack2)
+            else
+              match stack3 with
+              | (_, len3) :: _ when len3 <= len2 + len1 ->
+                sort offset (merge r1 r0 :: stack2)
 
-    | ((_, len0) as r0) :: ((_, len1) as r1) :: stack
-      when len1 <= len0 ->
-      sort offset (merge r1 r0 :: stack)
+              | _ ->
+                if offset < t_len then
+                  let len = next_run offset in
+                  sort (offset + len) ((offset, len) :: stack0)
+                else
+                  merge_all stack0
+          )
+        | [] ->
+          if len1 <= len0 then
+            sort offset (merge r1 r0 :: stack2)
+          else if offset < t_len then
+            let len = next_run offset in
+            sort (offset + len) ((offset, len) :: stack0)
+          else
+            merge_all stack0
+      )
 
-    | ((_, len0) as r0) :: ((_, len1) as r1) :: (((_, len2) :: _) as stack)
-      when len2 <= len1 + len0 ->
-      sort offset (merge r1 r0 :: stack)
-
-    | r0 :: ((_, len1) as r1) :: (((_, len2) :: (_, len3) :: _) as stack)
-      when len3 <= len2 + len1 ->
-      sort offset (merge r1 r0 :: stack)
-
-    | _ when offset < t_len ->
-      let len = next_run offset in
-      sort (offset + len) ((offset, len) :: stack)
-
-    | _ -> merge_all stack
+    | _ ->
+      if offset < t_len then
+        let len = next_run offset in
+        sort (offset + len) ((offset, len) :: stack0)
+      else
+        merge_all stack0
   in
 
   sort 0 []
