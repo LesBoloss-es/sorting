@@ -1,61 +1,69 @@
 open Sorting_array
 open Genlib
 
-let time f =
+let pf = Format.printf
+let fpf = Format.fprintf
+
+let bench
+    ~generator
+    ~lengths ~repeat
+    ~measure ~pp_measure
+    ?(check_outputs=false)
+    ()
+  =
+  pf "length\tstdlib\ttimsort\tspeedup@.";
+  lengths |> List.iter @@ fun len ->
+  let std_in = List.init repeat (fun _ -> generator len) in
+  let ts_in  = List.map Array.copy std_in in
+
+  let std, std_out = measure (fun cmp -> List.iter (Array.stable_sort cmp) std_in) in
+  let ts,  ts_out  = measure (fun cmp -> List.iter (Timsort.timsort   cmp) ts_in)  in
+  assert (not check_outputs || std_out = ts_out);
+  let speedup = (std -. ts) /. std *. 100. in
+  pf "%d\t%a\t%a\t%.1f%%@." len pp_measure std pp_measure ts speedup
+
+let runtime f =
   let open Unix in
   let before = times () in
-  let x = f () in
+  let x = f Int.compare in
   let after = times () in
-  after.tms_utime -. before.tms_utime, x
+  (after.tms_utime -. before.tms_utime, x)
 
-let bench gen sort ~repeat ~len =
-  let ts = List.init repeat (fun _ -> gen len) in
-  let runtime, () = time (fun () -> List.iter sort ts) in
-  runtime, ts
+let comparisons f =
+  let count = ref 0 in
+  let int_compare_count a b = incr count; Int.compare a b in
+  let x = f int_compare_count in
+  (float_of_int !count, x)
 
-let runtime gen =
+let bench =
+  let lengths = List.init 15 (fun i -> (i+ 1) * 10000) in
   let repeat = 20 in
-  Format.printf "len\tstdlib\ttimsort\tspeedup@.";
-  for i = 1 to 15 do
-    let len = i * 10000 in
-    let state = Random.get_state () in
-    let stdlib, _ = bench gen (Array.stable_sort Int.compare) ~repeat ~len in
-    Random.set_state state;
-    let us, _ = bench gen (Timsort.timsort Int.compare) ~repeat ~len in
-    let speedup = (stdlib -. us) /. stdlib *. 100. in
-    Format.printf "%d\t%.6f\t%.6f\t%.1f@." len stdlib us speedup
-  done
-
-let comparisons gen =
-  let repeat = 20 in
-  let counter = ref 0 in
-  let compare_count i j =
-    incr counter;
-    Int.compare i j
-  in
-  Format.printf "len\tstdlib\ttimsort\tspeedup@.";
-  for i = 1 to 15 do
-    let len = i * 10000 in
-    let state = Random.get_state () in
-    counter := 0;
-    let _ = bench gen (Array.stable_sort compare_count) ~repeat ~len in
-    let stdlib = !counter in
-    Random.set_state state;
-    counter := 0;
-    let _ = bench gen (Timsort.timsort compare_count) ~repeat ~len in
-    let us = !counter in
-    let foi = float_of_int in
-    let speedup = (foi stdlib -. foi us) /. (foi stdlib) *. 100. in
-    Format.printf "%d\t%d\t%d\t%.1f@." len stdlib us speedup
-  done
-
+  bench ~lengths ~repeat
 
 let () =
-  Format.printf "--- Unif ---@.";
-  runtime Genarray.gen_unif;
-  Format.printf "-----------@.";
-  comparisons Genarray.gen_unif;
-  Format.printf "--- 5-runs ---@.";
-  runtime (Genarray.gen_k_runs 5);
-  Format.printf "-----------@.";
-  comparisons (Genarray.gen_k_runs 5);
+  pf "============== [ Unif ] ==============@.";
+  let bench = bench ~generator:Genarray.gen_unif in
+  pf "------------- [ Runtime ] ------------@.";
+  bench
+    ~measure:runtime
+    ~pp_measure:(fun fmt -> fpf fmt "%.6f")
+    ();
+  pf "----------- [ Comparisons ] ----------@.";
+  bench
+    ~measure:comparisons
+    ~pp_measure:(fun fmt -> fpf fmt "%8.0f")
+    ()
+
+let () =
+  pf "============= [ 5-Runs ] =============@.";
+  let bench = bench ~generator:(Genarray.gen_k_runs 5) in
+  pf "------------- [ Runtime ] ------------@.";
+  bench
+    ~measure:runtime
+    ~pp_measure:(fun fmt -> fpf fmt "%.6f")
+    ();
+  pf "----------- [ Comparisons ] ----------@.";
+  bench
+    ~measure:comparisons
+    ~pp_measure:(fun fmt -> fpf fmt "%8.0f")
+    ()
