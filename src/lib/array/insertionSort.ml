@@ -2,6 +2,9 @@
 
 type 'a cmp = 'a -> 'a -> int
 
+
+(** Search where to insert x in the sorted slice t[lo: hi + 1].
+  Performs O(log(hi - lo)) comparisons. *)
 let rec binary_search cmp t x lo hi =
   (* assert a[lo: hi + 1] is sorted *)
   assert (0 <= lo);
@@ -28,19 +31,33 @@ let rec binary_search cmp t x lo hi =
     binary_search cmp t x lo (mid - 1)
 
 
-let sort cmp t lo hi =
+(** Sort the slice t[lo: hi + 1] assuming that t[lo: i] is already sorted. *)
+let rec sort_from_i cmp t lo hi i =
+  (* variant: hi - i *)
   assert (0 <= lo);
-  assert (lo <= hi);
+  assert (lo < i);
+  assert (i <= hi + 1);
   assert (hi < Array.length t);
-  (* ensures: t[lo: hi + 1] is sorted *)
-
-  for i = lo + 1 to hi do
-    (* invariant: t[lo: i]  is sorted. *)
+  (* assert t[lo: i] is sorted *)
+  (* ensures t[lo: hi + 1] is sorted *)
+  if i > hi then ()
+  else begin
     let x = t.(i) in
     let pos = binary_search cmp t x lo (i - 1) in
     Array.blit t pos t (pos + 1) (i - pos);
-    t.(pos) <- x
-  done
+    t.(pos) <- x;
+    sort_from_i cmp t lo hi (i + 1)
+  end
+
+let%test _ =
+  let t = [|9; 1; 4; 5; 3; 2; 0|] in
+  let i = 4 in
+  sort_from_i Int.compare t 1 5 i;
+  t = [|9; 1; 2; 3; 4; 5; 0|]
+
+
+(** Sort the slice t[lo: hi + 1]. *)
+let sort cmp t lo hi = sort_from_i cmp t lo hi (lo + 1)
 
 let%test _ =
   let t = [|4; 2; 6; 3|] in
