@@ -7,7 +7,7 @@ let fpf = Format.fprintf
 let bench
     ~generator
     ~lengths ~repeat
-    ~measure ~pp_measure
+    ~measure ~measure_fmt
     ?(check_outputs=false)
     ()
   =
@@ -20,6 +20,7 @@ let bench
   let ts,  ts_out  = measure (fun cmp -> List.iter (Timsort.timsort   cmp) ts_in)  in
   assert (not check_outputs || std_out = ts_out);
   let speedup = (std -. ts) /. std *. 100. in
+  let pp_measure fmt = fpf fmt measure_fmt in
   pf "%d\t%a\t%a\t%.1f%%@." len pp_measure std pp_measure ts speedup
 
 let runtime f =
@@ -44,26 +45,14 @@ let () =
   pf "============== [ Unif ] ==============@.";
   let bench = bench ~generator:Genarray.gen_unif in
   pf "------------- [ Runtime ] ------------@.";
-  bench
-    ~measure:runtime
-    ~pp_measure:(fun fmt -> fpf fmt "%.6f")
-    ();
+  bench ~measure:runtime ~measure_fmt:"%.6f" ();
   pf "----------- [ Comparisons ] ----------@.";
-  bench
-    ~measure:comparisons
-    ~pp_measure:(fun fmt -> fpf fmt "%8.0f")
-    ()
+  bench ~measure:comparisons ~measure_fmt:"%8.0f" ()
 
 let () =
   pf "============= [ 5-Runs ] =============@.";
   let bench = bench ~generator:(Genarray.gen_k_runs 5) in
   pf "------------- [ Runtime ] ------------@.";
-  bench
-    ~measure:runtime
-    ~pp_measure:(fun fmt -> fpf fmt "%.6f")
-    ();
+  bench ~measure:runtime ~measure_fmt:"%.6f" ();
   pf "----------- [ Comparisons ] ----------@.";
-  bench
-    ~measure:comparisons
-    ~pp_measure:(fun fmt -> fpf fmt "%8.0f")
-    ()
+  bench ~measure:comparisons ~measure_fmt:"%8.0f" ()
