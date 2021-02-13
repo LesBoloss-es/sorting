@@ -1,5 +1,23 @@
 type 'a cmp = 'a -> 'a -> int
 
+(* Compute a good value for the minimum run length; natural runs shorter than
+ * this are boosted artificially via binary insertion.
+ *
+ * If n < 64, return n (it's too small to bother with fancy stuff).
+ * Else if n is an exact power of 2, return 32.
+ * Else return an int k, 32 <= k <= 64, such that n / k is close to, but
+ * strictly less than, an exact power of 2.
+ *
+ * See <https://svn.python.org/projects/python/trunk/Objects/listsort.txt> for
+ * more info.
+ *)
+
+let rec compute_minrun n r =
+  if n < 64 then n + r
+  else compute_minrun (n asr 1) (r lor (n land 1))
+
+let compute_minrun n = compute_minrun n 0
+
 let reverse_inplace (t: 'a array) (offset: int) (len: int) =
   assert (0 <= offset);
   assert (len >= 0);
@@ -161,9 +179,19 @@ let rec merge_all cmp t = function
 
 let timsort (cmp: 'a cmp) (t: 'a array) =
   let t_len = Array.length t in
+  let minrun = compute_minrun t_len in
+
   let merge = merge cmp t in
   let merge_all = merge_all cmp t in
-  let next_run = next_run cmp t in
+  let next_run offset =
+    let len = next_run cmp t offset in
+    if len >= minrun then len
+    else begin
+      let hi = min (offset + minrun) t_len - 1 in
+      InsertionSort.sort_from_i cmp t offset hi (offset + len);
+      hi - offset + 1
+    end
+  in
 
   let rec sort offset (stack0 : (int * int) list) =
     (* stackn = stack starting with rn *)
