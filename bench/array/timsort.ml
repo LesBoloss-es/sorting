@@ -4,6 +4,13 @@ open Genlib
 let pf = Format.printf
 let fpf = Format.fprintf
 
+let log2_fact n =
+  let rec log2_fact res = function
+    | 0 -> res
+    | n -> log2_fact (res +. log (float_of_int n)) (n - 1)
+  in
+  log2_fact 0. n /. log 2. |> ceil |> int_of_float
+
 let bench
     ~generator
     ~lengths ~repeat
