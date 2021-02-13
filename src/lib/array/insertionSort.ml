@@ -44,7 +44,9 @@ let rec sort_from_i cmp t lo hi i =
   else begin
     let x = t.(i) in
     let pos = binary_search cmp t x lo (i - 1) in
-    Array.blit t pos t (pos + 1) (i - pos);
+    for j = i downto pos + 1 do
+      t.(j) <- t.(j - 1)
+    done;
     t.(pos) <- x;
     sort_from_i cmp t lo hi (i + 1)
   end
