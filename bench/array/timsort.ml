@@ -3,6 +3,7 @@ open Genlib
 
 let pf = Format.printf
 let fpf = Format.fprintf
+let spf = Format.sprintf
 
 let log2_fact n =
   let rec log2_fact res = function
@@ -18,7 +19,7 @@ let bench
     ?(check_outputs=false)
     ()
   =
-  pf "length\tstdlib\ttimsort\tspeedup@.";
+  pf "length     stdlib    timsort   speedup@.";
   lengths |> List.iter @@ fun len ->
   let std_in = List.init repeat (fun _ -> generator len) in
   let ts_in  = List.map Array.copy std_in in
@@ -28,7 +29,7 @@ let bench
   assert (not check_outputs || std_out = ts_out);
   let speedup = (std -. ts) /. std *. 100. in
   let pp_measure fmt = fpf fmt measure_fmt in
-  pf "%d\t%a\t%a\t%.1f%%@." len pp_measure std pp_measure ts speedup
+  pf "%6d   %a   %a   %6s%%@." len pp_measure std pp_measure ts (spf "%.1f" speedup)
 
 let runtime f =
   let open Unix in
