@@ -123,32 +123,27 @@ let rec merge_hi
   end
 
 
-let merge cmp t =
-  if t = [||] then
-    fun _ _ -> 0, 0
-  else
-    let buffer = Array.make (Array.length t) t.(0) in
-    fun (ofs0, len0) (ofs1, len1) ->
-      assert (ofs0 + len0 = ofs1);
-      assert (ofs1 + len1 <= Array.length t);
-      if len0 < len1 then begin
-        Array.blit t ofs0 buffer 0 len0;
-        merge_lo
-          cmp
-          t ofs0
-          buffer 0 len0
-          t ofs1 len1
-      end else begin
-        Array.blit t ofs1 buffer 0 len1;
-        merge_hi
-          cmp
-          t ofs0
-          t ofs0 len0
-          buffer 0 len1
-      end;
-      ofs0, len0 + len1
+let merge ~buffer cmp t (ofs0, len0) (ofs1, len1) =
+  assert (ofs0 + len0 = ofs1);
+  assert (ofs1 + len1 <= Array.length t);
+  if len0 < len1 then begin
+    Array.blit t ofs0 buffer 0 len0;
+    merge_lo
+      cmp
+      t ofs0
+      buffer 0 len0
+      t ofs1 len1
+  end else begin
+    Array.blit t ofs1 buffer 0 len1;
+    merge_hi
+      cmp
+      t ofs0
+      t ofs0 len0
+      buffer 0 len1
+  end;
+  ofs0, len0 + len1
 
-let rec merge_all cmp t = function
+let rec merge_all ~buffer cmp t = function
   | [] ->
     assert (t = [||]);
     ()
@@ -157,12 +152,18 @@ let rec merge_all cmp t = function
     assert (len = Array.length t);
     ()
   | r0 :: r1 :: stack ->
-    merge_all cmp t (merge cmp t r1 r0 :: stack)
+    merge_all ~buffer cmp t (merge ~buffer cmp t r1 r0 :: stack)
 
 let timsort (cmp: 'a cmp) (t: 'a array) =
   let t_len = Array.length t in
-  let merge = merge cmp t in
-  let merge_all = merge_all cmp t in
+  (* Merge buffer: when merging two adjacent runs, the smallest one is moved to
+   * this temporary buffer and the merging happens in the main array. *)
+  let buffer =
+    if t_len > 2 then Array.make (t_len / 2) t.(0)
+    else [||]
+  in
+  let merge = merge ~buffer cmp t in
+  let merge_all = merge_all ~buffer cmp t in
   let next_run = next_run cmp t in
 
   let rec sort offset (stack0 : (int * int) list) =
