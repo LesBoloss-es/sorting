@@ -39,15 +39,16 @@ let bench_table ~generator ~lengths ~repeat ()
        let c_std = lazy (bench_one ~measure:comparisons ~algorithm:Array.stable_sort ~inputs ()) in
        let c_ts  = lazy (bench_one ~measure:comparisons ~algorithm:Timsort.timsort ~inputs ()) in
 
-       [ int_cell length;
-         fmt_cell (fun () -> Lazy.force t_std) ~fmt:"%.6f";
-         fmt_cell (fun () -> Lazy.force t_ts)  ~fmt:"%.6f";
-         fmt_cell (fun () -> speedup ~from:(Lazy.force t_std) ~to_:(Lazy.force t_ts)) ~fmt:"%.1f%%";
-         int_cell (repeat * log2_fact length) ;
-         fmt_cell (fun () -> Lazy.force c_std) ~fmt:"%.0f";
-         fmt_cell (fun () -> Lazy.force c_ts)  ~fmt:"%.0f";
-         fmt_cell (fun () -> speedup ~from:(Lazy.force c_std) ~to_:(Lazy.force c_ts)) ~fmt:"%.1f%%" ])
+       let repeat = float_of_int repeat in
 
+       [ int_cell length;
+         fmt_cell (fun () -> Lazy.force t_std /. repeat) ~fmt:"%.6f";
+         fmt_cell (fun () -> Lazy.force t_ts  /. repeat) ~fmt:"%.6f";
+         fmt_cell (fun () -> speedup ~from:(Lazy.force t_std) ~to_:(Lazy.force t_ts)) ~fmt:"%.1f%%";
+         int_cell (log2_fact length) ;
+         fmt_cell (fun () -> Lazy.force c_std /. repeat) ~fmt:"%.0f";
+         fmt_cell (fun () -> Lazy.force c_ts  /. repeat) ~fmt:"%.0f";
+         fmt_cell (fun () -> speedup ~from:(Lazy.force c_std) ~to_:(Lazy.force c_ts)) ~fmt:"%.1f%%" ])
     lengths
 
 let headers =
@@ -63,9 +64,9 @@ let cell_styles () =
     (Auto (ref 8), Right);
     (Auto (ref 8), Right);
     (Auto (ref 7), Right);
-    (Auto (ref 9), Right);
-    (Auto (ref 9), Right);
-    (Auto (ref 9), Right);
+    (Auto (ref 7), Right);
+    (Auto (ref 7), Right);
+    (Auto (ref 7), Right);
     (Auto (ref 7), Right);
   ]
 
