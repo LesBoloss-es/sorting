@@ -63,15 +63,15 @@ let cell_styles () =
     (Auto (ref 8), Right);
     (Auto (ref 8), Right);
     (Auto (ref 7), Right);
-    (Auto (ref 8), Right);
-    (Auto (ref 8), Right);
-    (Auto (ref 8), Right);
+    (Auto (ref 9), Right);
+    (Auto (ref 9), Right);
+    (Auto (ref 9), Right);
     (Auto (ref 7), Right);
   ]
 
 let bench_table =
-  let lengths = List.init 15 (fun i -> (i+ 1) * 10000) in
-  let repeat = 20 in
+  let lengths = List.init 5 (fun i -> (i+ 1) * 30000) in
+  let repeat = 50 in
   bench_table ~lengths ~repeat
 
 let () = print_newline ()
