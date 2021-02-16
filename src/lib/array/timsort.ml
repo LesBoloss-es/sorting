@@ -74,21 +74,24 @@ let rec merge_lo
     ()
   else if len1 = 0 then
     Array.blit src0 ofs0 dest ofs len0
-  else if cmp src0.(ofs0) src1.(ofs1) <= 0 then begin
-    dest.(ofs) <- src0.(ofs0);
-    merge_lo
-      cmp
-      dest (ofs + 1)
-      src0 (ofs0 + 1) (len0 - 1)
-      src1 ofs1 len1
-  end else begin
-    dest.(ofs) <- src1.(ofs1);
-    merge_lo
-      cmp
-      dest (ofs + 1)
-      src0 ofs0 len0
-      src1 (ofs1 + 1) (len1 - 1)
-  end
+  else
+    let x0 = src0.(ofs0) in
+    let x1 = src1.(ofs1) in
+    if cmp x0 x1 <= 0 then begin
+      dest.(ofs) <- x0;
+      merge_lo
+        cmp
+        dest (ofs + 1)
+        src0 (ofs0 + 1) (len0 - 1)
+        src1 ofs1 len1
+    end else begin
+      dest.(ofs) <- x1;
+      merge_lo
+        cmp
+        dest (ofs + 1)
+        src0 ofs0 len0
+        src1 (ofs1 + 1) (len1 - 1)
+    end
 
 
 let rec merge_hi
@@ -106,21 +109,24 @@ let rec merge_hi
     Array.blit src1 ofs1 dest ofs len1
   else if len1 = 0 then
     ()
-  else if cmp src0.(ofs0 + len0 - 1) src1.(ofs1 + len1 - 1) <= 0 then begin
-    dest.(ofs + len0 + len1 - 1) <- src1.(ofs1 + len1 - 1);
-    merge_hi
-      cmp
-      dest ofs
-      src0 ofs0 len0
-      src1 ofs1 (len1 - 1)
-  end else begin
-    dest.(ofs + len0 + len1 - 1) <- src0.(ofs0 + len0 - 1);
-    merge_hi
-      cmp
-      dest ofs
-      src0 ofs0 (len0 - 1)
-      src1 ofs1 len1
-  end
+  else
+    let x0 = src0.(ofs0 + len0 - 1) in
+    let x1 = src1.(ofs1 + len1 - 1) in
+    if cmp x0 x1 <= 0 then begin
+      dest.(ofs + len0 + len1 - 1) <- x1;
+      merge_hi
+        cmp
+        dest ofs
+        src0 ofs0 len0
+        src1 ofs1 (len1 - 1)
+    end else begin
+      dest.(ofs + len0 + len1 - 1) <- x0;
+      merge_hi
+        cmp
+        dest ofs
+        src0 ofs0 (len0 - 1)
+        src1 ofs1 len1
+    end
 
 
 let merge ~buffer cmp t (ofs0, len0) (ofs1, len1) =
