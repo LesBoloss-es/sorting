@@ -64,69 +64,88 @@ let%test_module _ =
 let rec merge_lo
   cmp
   dest ofs
-  src0 ofs0 len0
-  src1 ofs1 len1
+  src0 ofs0 len0 x0
+  src1 ofs1 len1 x1
 =
   assert (Array.length dest >= ofs + len0 + len1);
   assert (Array.length src0 >= ofs0 + len0);
   assert (Array.length src1 >= ofs1 + len1);
-  if len0 = 0 then
-    ()
-  else if len1 = 0 then
-    Array.blit src0 ofs0 dest ofs len0
-  else
-    let x0 = src0.(ofs0) in
-    let x1 = src1.(ofs1) in
-    if cmp x0 x1 <= 0 then begin
-      dest.(ofs) <- x0;
-      merge_lo
-        cmp
-        dest (ofs + 1)
-        src0 (ofs0 + 1) (len0 - 1)
-        src1 ofs1 len1
-    end else begin
-      dest.(ofs) <- x1;
-      merge_lo
-        cmp
-        dest (ofs + 1)
-        src0 ofs0 len0
-        src1 (ofs1 + 1) (len1 - 1)
-    end
+  assert (x0 = src0.(ofs0));
+  assert (x1 = src1.(ofs1));
+  assert (len0 > 0);
+  assert (len1 > 0);
 
+  (* This is used to optimise the case len0 = 1 below. *)
+  assert (dest == src1 && ofs + len0 = ofs1);
+
+  if cmp x0 x1 <= 0 then begin
+    dest.(ofs) <- x0;
+    if len0 = 1 then
+      (* We are done with the run stored in src0. Also note that there is no
+       * need to blit since (dest,ofs) = (src1,ofs1). *)
+      ()
+    else
+      merge_lo
+        cmp
+        dest (ofs + 1)
+        src0 (ofs0 + 1) (len0 - 1) src0.(ofs0 + 1)
+        src1 ofs1 len1 x1
+  end else begin
+    dest.(ofs) <- x1;
+    if len1 = 1 then
+      (* We are done with the run stored in src1, blit the rest of the other run
+       * and exit. *)
+      Array.blit src0 ofs0 dest (ofs + 1) len0
+    else
+      merge_lo
+        cmp
+        dest (ofs + 1)
+        src0 ofs0 len0 x0
+        src1 (ofs1 + 1) (len1 - 1) src1.(ofs1 + 1)
+  end
 
 let rec merge_hi
   cmp
   dest ofs
-  src0 ofs0 len0
-  src1 ofs1 len1
+  src0 ofs0 len0 x0
+  src1 ofs1 len1 x1
 =
   assert (Array.length dest >= ofs + len0 + len1);
   assert (Array.length src0 >= ofs0 + len0);
   assert (Array.length src1 >= ofs1 + len1);
-  assert (len0 >= 0);
-  assert (len1 >= 0);
-  if len0 = 0 then
-    Array.blit src1 ofs1 dest ofs len1
-  else if len1 = 0 then
-    ()
-  else
-    let x0 = src0.(ofs0 + len0 - 1) in
-    let x1 = src1.(ofs1 + len1 - 1) in
-    if cmp x0 x1 <= 0 then begin
-      dest.(ofs + len0 + len1 - 1) <- x1;
+  assert (x0 = src0.(ofs0 + len0 - 1));
+  assert (x1 = src1.(ofs1 + len1 - 1));
+  assert (len0 > 0);
+  assert (len1 > 0);
+
+  (* This is used to optimise the case len1 = 1 below. *)
+  assert (dest == src0 && ofs = ofs0);
+
+  if cmp x0 x1 <= 0 then begin
+    dest.(ofs + len0 + len1 - 1) <- x1;
+    if len1 = 1 then
+      (* We are done with the run stored in src1. Also note that there is no
+       * need to blit since (dest,ofs) = (src0,ofs0). *)
+      ()
+    else
       merge_hi
         cmp
         dest ofs
-        src0 ofs0 len0
-        src1 ofs1 (len1 - 1)
-    end else begin
-      dest.(ofs + len0 + len1 - 1) <- x0;
+        src0 ofs0 len0 x0
+        src1 ofs1 (len1 - 1) src1.(ofs1 + len1 - 2)
+  end else begin
+    dest.(ofs + len0 + len1 - 1) <- x0;
+    if len0 = 1 then
+      (* We are done with the run stored in src0, blit the rest of the other run
+       * and exit. *)
+      Array.blit src1 ofs1 dest ofs len1
+    else
       merge_hi
         cmp
         dest ofs
-        src0 ofs0 (len0 - 1)
-        src1 ofs1 len1
-    end
+        src0 ofs0 (len0 - 1) src0.(ofs0 + len0 - 2)
+        src1 ofs1 len1 x1
+  end
 
 
 let merge ~buffer cmp t (ofs0, len0) (ofs1, len1) =
@@ -137,15 +156,15 @@ let merge ~buffer cmp t (ofs0, len0) (ofs1, len1) =
     merge_lo
       cmp
       t ofs0
-      buffer 0 len0
-      t ofs1 len1
+      buffer 0 len0 buffer.(0)
+      t ofs1 len1 t.(ofs1)
   end else begin
     Array.blit t ofs1 buffer 0 len1;
     merge_hi
       cmp
       t ofs0
-      t ofs0 len0
-      buffer 0 len1
+      t ofs0 len0 t.(ofs0 + len0 - 1)
+      buffer 0 len1 buffer.(len1 - 1)
   end;
   ofs0, len0 + len1
 
