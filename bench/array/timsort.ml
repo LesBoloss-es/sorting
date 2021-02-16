@@ -20,7 +20,16 @@ let int_cell i = cell ~to_string:string_of_int (fun () -> i)
 let string_cell s = cell ~to_string:Fun.id (fun () -> s)
 
 type cell_size = None | Given of int | Auto of int ref
-type cell_align = Left | Center | Right
+type align = Left | Center | Right
+
+let fill_string ?(fill=' ') size = String.make size fill
+
+let align_string ?fill align str size =
+  let len = String.length str in
+  match align with
+  | Left -> str ^ (fill_string ?fill (size - len))
+  | Right -> (fill_string ?fill (size - len)) ^ str
+  | Center -> (fill_string ?fill ((size - len) / 2)) ^ str ^ (fill_string ?fill (size - len - (size - len) / 2))
 
 let pp_cell ~size ~align fmt = function
   | Cell (f, to_string) ->
@@ -32,12 +41,7 @@ let pp_cell ~size ~align fmt = function
       | Auto size -> size := max !size len; !size
       | Given size -> size
     in
-    let str =
-      match align with
-      | Left -> str ^ (String.make (size - len) ' ')
-      | Right -> (String.make (size - len) ' ') ^ str
-      | Center -> (String.make ((size - len) / 2) ' ') ^ str ^ (String.make (size - len - (size - len) / 2) ' ')
-    in
+    let str = align_string align str size in
     pp_string fmt str
 
 let pp_row ~sep_len ?cell_styles fmt cells =
@@ -75,7 +79,7 @@ let pp_table ?title ?headers ?(sep_len=3) ?cell_styles fmt t =
   in
   (match title with
    | None -> ()
-   | Some title -> fpf fmt "============== [ %s ] ==============@." title);
+   | Some title -> fpf fmt "%s@." (align_string Center (spf " [ %s ] " title) (len ()) ~fill:'='));
   (match headers with
    | None -> ()
    | Some headers -> pp_row ~sep_len ?cell_styles fmt headers);
@@ -146,11 +150,11 @@ let cell_styles () =
     (Auto (ref 6), Right);
     (Auto (ref 8), Right);
     (Auto (ref 8), Right);
-    (Auto (ref 4), Right);
+    (Auto (ref 7), Right);
     (Auto (ref 8), Right);
     (Auto (ref 8), Right);
     (Auto (ref 8), Right);
-    (Auto (ref 4), Right);
+    (Auto (ref 7), Right);
   ]
 
 let bench_table =
