@@ -71,7 +71,7 @@ let rec merge_lo
   assert (Array.length src0 >= ofs0 + len0);
   assert (Array.length src1 >= ofs1 + len1);
   if len0 = 0 then
-    Array.blit src1 ofs1 dest ofs len1
+    ()
   else if len1 = 0 then
     Array.blit src0 ofs0 dest ofs len0
   else if cmp src0.(ofs0) src1.(ofs1) <= 0 then begin
@@ -105,7 +105,7 @@ let rec merge_hi
   if len0 = 0 then
     Array.blit src1 ofs1 dest ofs len1
   else if len1 = 0 then
-    Array.blit src0 ofs0 dest ofs len0
+    ()
   else if cmp src0.(ofs0 + len0 - 1) src1.(ofs1 + len1 - 1) <= 0 then begin
     dest.(ofs + len0 + len1 - 1) <- src1.(ofs1 + len1 - 1);
     merge_hi
