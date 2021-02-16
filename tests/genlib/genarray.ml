@@ -11,7 +11,7 @@ let gen_run ~asc t ofs len =
   let rec fill i prev =
     if i >= len then ()
     else begin
-      let x = prev +- Random.int 10 in
+      let x = prev +- (Random.int 10 + 1) in
       t.(ofs + i) <- x;
       fill (i + 1) x
     end
