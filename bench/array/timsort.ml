@@ -162,13 +162,18 @@ let bench_table =
   let repeat = 20 in
   bench_table ~lengths ~repeat
 
+let () = print_newline ()
 
 let () =
   bench_table ~generator:Genarray.gen_unif ()
   |> print_table ~title:"Unif" ~headers
     ~cell_styles:(cell_styles ())
 
+let () = print_newline ()
+
 let () =
   bench_table ~generator:(Genarray.gen_k_runs 5) ()
   |> print_table ~title:"5-Runs" ~headers
     ~cell_styles:(cell_styles ())
+
+let () = print_newline ()
