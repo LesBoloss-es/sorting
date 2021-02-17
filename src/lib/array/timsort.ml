@@ -63,88 +63,86 @@ let%test_module _ =
 
 let rec merge_lo
   cmp
-  dest ofs
-  src0 ofs0 len0 x0
-  src1 ofs1 len1 x1
+  dest beg
+  src0 beg0 end0 x0
+  src1 beg1 end1 x1
 =
-  assert (Array.length dest >= ofs + len0 + len1);
-  assert (Array.length src0 >= ofs0 + len0);
-  assert (Array.length src1 >= ofs1 + len1);
-  assert (x0 = src0.(ofs0));
-  assert (x1 = src1.(ofs1));
-  assert (len0 > 0);
-  assert (len1 > 0);
+  assert (Array.length dest >= beg + (end0 - beg0 + 1) + (end1 - beg1 + 1));
+  assert (Array.length src0 > end0);
+  assert (Array.length src1 > end1);
+  assert (x0 = src0.(beg0));
+  assert (x1 = src1.(beg1));
+  assert (end0 >= beg0);
+  assert (end1 >= beg1);
 
   (* This is used to optimise the case len0 = 1 below. *)
-  assert (dest == src1 && ofs + len0 = ofs1);
+  assert (dest == src1 && beg + (end0 - beg0 + 1) = beg1);
 
   if cmp x0 x1 <= 0 then begin
-    dest.(ofs) <- x0;
-    if len0 = 1 then
-      (* We are done with the run stored in src0. Also note that there is no
-       * need to blit since (dest,ofs) = (src1,ofs1). *)
-      ()
-    else
+    dest.(beg) <- x0;
+    (* If this was the last element of run0 we stop. Besides, since we have
+     * [dest == src1], the remaining element of run1 are already where they
+     * are supposed to be and we can exit. *)
+    if beg0 < end0 then
       merge_lo
         cmp
-        dest (ofs + 1)
-        src0 (ofs0 + 1) (len0 - 1) src0.(ofs0 + 1)
-        src1 ofs1 len1 x1
+        dest (beg + 1)
+        src0 (beg0 + 1) end0 src0.(beg0 + 1)
+        src1 beg1 end1 x1
   end else begin
-    dest.(ofs) <- x1;
-    if len1 = 1 then
-      (* We are done with the run stored in src1, blit the rest of the other run
-       * and exit. *)
-      Array.blit src0 ofs0 dest (ofs + 1) len0
-    else
+    dest.(beg) <- x1;
+    (* If this was the last element of run1 we stop. There remains to move all
+     * the elements of run0 at the beginning of dest. *)
+    if beg1 < end1 then
       merge_lo
         cmp
-        dest (ofs + 1)
-        src0 ofs0 len0 x0
-        src1 (ofs1 + 1) (len1 - 1) src1.(ofs1 + 1)
+        dest (beg + 1)
+        src0 beg0 end0 x0
+        src1 (beg1 + 1) end1 src1.(beg1 + 1)
+    else
+      Array.blit src0 beg0 dest (beg + 1) (end0 - beg0 + 1)
   end
 
 let rec merge_hi
   cmp
-  dest ofs
-  src0 ofs0 len0 x0
-  src1 ofs1 len1 x1
+  dest end_
+  src0 beg0 end0 x0 (* run0 *)
+  src1 beg1 end1 x1 (* run1 *)
 =
-  assert (Array.length dest >= ofs + len0 + len1);
-  assert (Array.length src0 >= ofs0 + len0);
-  assert (Array.length src1 >= ofs1 + len1);
-  assert (x0 = src0.(ofs0 + len0 - 1));
-  assert (x1 = src1.(ofs1 + len1 - 1));
-  assert (len0 > 0);
-  assert (len1 > 0);
-
+  assert (Array.length dest > end_);
+  assert (Array.length src0 > end0);
+  assert (Array.length src1 > end1);
+  assert (x0 = src0.(end0));
+  assert (x1 = src1.(end1));
+  assert (end0 >= beg0);
+  assert (end1 >= beg1);
   (* This is used to optimise the case len1 = 1 below. *)
-  assert (dest == src0 && ofs = ofs0);
+  assert (dest == src0 && end_ - (end1 - beg1 + 1) = end0);
 
   if cmp x0 x1 <= 0 then begin
-    dest.(ofs + len0 + len1 - 1) <- x1;
-    if len1 = 1 then
-      (* We are done with the run stored in src1. Also note that there is no
-       * need to blit since (dest,ofs) = (src0,ofs0). *)
-      ()
-    else
+    dest.(end_) <- x1;
+    (* If this was the last element of run1 we stop. Besides, since we have
+     * [dest == src0], the remaining element of run0 are already where they
+     * are supposed to be and we can exit. *)
+    if beg1 < end1 then
       merge_hi
         cmp
-        dest ofs
-        src0 ofs0 len0 x0
-        src1 ofs1 (len1 - 1) src1.(ofs1 + len1 - 2)
+        dest (end_ - 1)
+        src0 beg0 end0 x0
+        src1 beg1 (end1 - 1) src1.(end1 - 1)
   end else begin
-    dest.(ofs + len0 + len1 - 1) <- x0;
-    if len0 = 1 then
-      (* We are done with the run stored in src0, blit the rest of the other run
-       * and exit. *)
-      Array.blit src1 ofs1 dest ofs len1
-    else
+    dest.(end_) <- x0;
+    (* If this was the last element of run0 we stop. There remains to move all
+     * the elements of run1 at the end of dest. *)
+    if beg0 < end0 then
       merge_hi
         cmp
-        dest ofs
-        src0 ofs0 (len0 - 1) src0.(ofs0 + len0 - 2)
-        src1 ofs1 len1 x1
+        dest (end_ - 1)
+        src0 beg0 (end0 - 1) src0.(end0 - 1)
+        src1 beg1 end1 x1
+    else
+      let len1 = end1 - beg1 + 1 in
+      Array.blit src1 beg1 dest (end_ - len1) len1
   end
 
 
@@ -156,15 +154,16 @@ let merge ~buffer cmp t (ofs0, len0) (ofs1, len1) =
     merge_lo
       cmp
       t ofs0
-      buffer 0 len0 buffer.(0)
-      t ofs1 len1 t.(ofs1)
+      buffer 0 (len0 - 1) buffer.(0)
+      t ofs1 (ofs1 + len1 - 1) t.(ofs1)
   end else begin
     Array.blit t ofs1 buffer 0 len1;
+    let top0 = ofs0 + len0 - 1 in
     merge_hi
       cmp
-      t ofs0
-      t ofs0 len0 t.(ofs0 + len0 - 1)
-      buffer 0 len1 buffer.(len1 - 1)
+      t (top0 + len1)
+      t ofs0 top0 t.(top0)
+      buffer 0 (len1 - 1) buffer.(len1 - 1)
   end;
   ofs0, len0 + len1
 
