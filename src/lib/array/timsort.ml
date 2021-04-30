@@ -90,16 +90,49 @@ let rec merge_lo
       src1 (ofs1 + 1) (len1 - 1)
   end
 
+let rec merge_hi
+    cmp
+    dest ofs
+    src0 ofs0 len0
+    src1 ofs1 len1
+  =
+  assert (Array.length dest >= ofs + len0 + len1);
+  assert (Array.length src0 >= ofs0 + len0);
+  assert (Array.length src1 >= ofs1 + len1);
+  assert (len0 >= 0);
+  assert (len1 >= 0);
+  if len0 = 0 then
+    Array.blit src1 ofs1 dest ofs len1
+  else if len1 = 0 then
+    Array.blit src0 ofs0 dest ofs len0
+  else if cmp src0.(ofs0 + len0 - 1) src1.(ofs1 + len1 - 1) <= 0 then begin
+    dest.(ofs + len0 + len1 - 1) <- src1.(ofs1 + len1 - 1);
+    merge_hi
+      cmp
+      dest ofs
+      src0 ofs0 len0
+      src1 ofs1 (len1 - 1)
+  end else begin
+    dest.(ofs + len0 + len1 - 1) <- src0.(ofs0 + len0 - 1);
+    merge_hi
+      cmp
+      dest ofs
+      src0 ofs0 (len0 - 1)
+      src1 ofs1 len1
+  end
+
 let merge ~buffer cmp t (src0, ofs0, len0) (src1, ofs1, len1) =
   assert (ofs0 + len0 = ofs1);
   assert (ofs1 + len1 <= Array.length t);
-  let dest =
+  let merge_hilo, dest =
     if src0 == src1 then
-      if src0 == t then buffer else t
+      (merge_lo, if src0 == t then buffer else t)
+    else if len0 < len1 then
+      (merge_lo, src1)
     else
-      src1
+      (merge_hi, src0)
   in
-  merge_lo
+  merge_hilo
     cmp
     dest ofs0
     src0 ofs0 len0
