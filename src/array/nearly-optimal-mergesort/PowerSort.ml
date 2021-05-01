@@ -18,7 +18,7 @@ let nodePower (left: int) (right: int) (startA: int) (startB: int) (endB: int) =
   let r = startB + endB + 1 - (left lsl 1) in (* 2*middleB *)
   let a = ((l lsl 30) / n) in (* middleA / 2n *)
   let b = ((r lsl 30) / n) in (* middleB / 2n *)
-  Base.Int.(clz (pow a b))
+  Base.Int.(clz (a lxor b))
 
 let powersort (cmp: 'a cmp) (a: 'a array) (left: int) (right: int) =
 	let n = right - left + 1 in

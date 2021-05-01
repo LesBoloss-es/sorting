@@ -2,6 +2,10 @@
 ;  (name timsort)
 ;  (libraries sorting_array genlib unix))
 
+; (executable
+;  (name peeksort)
+;  (libraries sorting_array genlib unix))
+
 (executable
- (name peeksort)
- (libraries sorting_array genlib unix))
+ (name powersort)
+ (libraries NearlyOptimalMergesort genlib unix))
