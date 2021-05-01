@@ -1,3 +1,4 @@
 (library
  (name NearlyOptimalMergesort)
- (synopsis "OCaml implementation of “Nearly-Optimal Mergesort”"))
+ (synopsis "OCaml implementation of “Nearly-Optimal Mergesort”")
+ (libraries base))

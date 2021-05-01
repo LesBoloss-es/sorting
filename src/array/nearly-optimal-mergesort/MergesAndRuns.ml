@@ -78,3 +78,29 @@ let extendStrictlyDecreasingRunRight (cmp: 'a cmp) (a: 'a array) (i: int) (right
    incr i
  done;
  !i
+
+let extendAndReverseRunRight (cmp: 'a cmp) (a: 'a array) (i: int) (right: int) =
+	assert (i <= right);
+	let j = ref i in
+  if !j = right then !j
+  else
+    (
+		  (* Find end of run, and reverse range if descending *)
+      (* Note: The Java code says A[j] > A[++j] but this is hard to emulate in
+         OCaml considering the order of evaluation! So we go with j+1 and we
+         will add an incrementation in both branches of the if. *)
+		  if cmp a.(!j) a.(!j+1) > 0 then
+        (
+          (* Strictly Descending *)
+          incr j;
+		      while !j < right && cmp a.(!j+1) a.(!j) < 0 do incr j done;
+          reverseRange a i !j
+        )
+      else
+        (
+          (* Weakly Ascending *)
+          incr j;
+			    while !j < right && cmp a.(!j+1) a.(!j) >= 0 do incr j done
+        );
+      !j
+    );
