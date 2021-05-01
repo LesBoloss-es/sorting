@@ -1,3 +1,7 @@
+; (executable
+;  (name timsort)
+;  (libraries sorting_array genlib unix))
+
 (executable
- (name timsort)
+ (name peeksort)
  (libraries sorting_array genlib unix))
