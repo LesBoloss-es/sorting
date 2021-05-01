@@ -1,4 +1,6 @@
 (library
  (name NearlyOptimalMergesort)
  (synopsis "OCaml implementation of “Nearly-Optimal Mergesort”")
- (libraries base))
+ (libraries base)
+ (inline_tests)
+ (preprocess (pps ppx_inline_test)))
