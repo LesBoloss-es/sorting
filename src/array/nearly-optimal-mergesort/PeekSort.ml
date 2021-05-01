@@ -1,40 +1,7 @@
-(** {1 Peeksort}
+(** {1 PeekSort}
 
     This module contains the implementation of Peeksort described in (Munro &
-    Wild 2018). *)
-
-(* The naming conventions for this algorithm are the same as that of Timsort: a
-   "run" is either a maximal weakly increasing or maximal strictly decreasing
-   region. The fact that we consider only strictly decreasing runs allows to
-   reverse them on detection without loosing the stability of the algorithm. *)
-
-(* For reference, here is a verbatim copy of "Algorithm 1"
-   from (Munro & Wild 2018).
-
-   PeekSort(A[l..r], e, s)
-
-    1  if e == r or s == l then return
-    2  m := l + floor((r-l) / 2)
-    3  if m <= e
-    4    PeekSort(A[e+1..r], e+1, s)
-    5    Merge(A[l..e], A[e+1..r])
-    6  else if m >= s
-    7    PeekSort(A[l..s-1], e, s-1)
-    8    Merge(A[l..s-1], A[s..r])
-    9  else
-   10    i := ExtendRunLeft(A[m], l);  j := ExtendRunRight(A[m], r);
-   11    if i == l and j == r return
-   12    if m - i < j - m
-   13      PeekSort(A[l..i-1], e, i-1)
-   14      PeekSort(A[i..r], j, s)
-   15      Merge(A[l..i-1], A[i..r])
-   16    else
-   17      PeekSort(A[l..j], e, i)
-   18      PeekSort(A[j+1..r], j+1, s)
-   19      Merge(A[l..j], A[j+1..r]) *)
-
-(* Note: The algorithm in the article is quite imprecise. It is better to see
-   the version that has been implemented by the authors at the address:
+    Wild 2018) and implemented by the authors at the address:
 
     https://github.com/sebawild/nearly-optimal-mergesort-code/blob/master/src/wildinter/net/mergesort/PeekSort.java *)
 
