@@ -38,7 +38,7 @@ let test_one (name, sort) =
 let test_one_stable (name, sort) =
   Format.printf "Checking that %s sorts in a stable way... @?" name;
   let nb = 20 in
-  for log2_len = 0 to 5 do
+  for log2_len = 1 to 5 do
     let len = 1 lsl (3 * log2_len) in
     Format.printf "[%d] @?" len;
     test_stable ~sort ~gen:gen_unif ~nb ~len;
