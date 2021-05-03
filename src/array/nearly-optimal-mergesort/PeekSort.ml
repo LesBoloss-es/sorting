@@ -72,7 +72,7 @@ let rec peeksort (cmp: 'a cmp) (a: 'a array) (left: int) (right: int) (leftRunEn
     )
 
 let peeksort (cmp: 'a cmp) (a: 'a array) (l: int) (r: int) =
-  if a != [||] then
+  if a <> [||] then
     (
       let b = Array.make (r - l + 1) a.(0) in
       peeksort cmp a l r l r b
