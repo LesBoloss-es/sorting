@@ -9,6 +9,14 @@ type sorter =
 
 let all_sorters =
   [
+    { name = "stdlib(fast)" ;
+      stable = false ;
+      sorter = Array.fast_sort } ;
+
+    { name = "stdlib(stable)" ;
+      stable = true ;
+      sorter = Array.stable_sort } ;
+
     { name = "timsort" ;
       stable = true ;
       sorter = Timsort.timsort } ;
