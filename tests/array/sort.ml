@@ -1,5 +1,5 @@
 open Genlib.Genarray
-open Allfuns.Allarrays
+open Sorting_array
 
 let test_gen ~prep ~cmp ~sort ~gen ~nb ~len =
   let rec aux = function
@@ -24,17 +24,17 @@ let test_stable ~sort ~gen ~nb ~len =
 
 let failure = ref false
 
-let test_one (name, sort) =
-  Format.printf "Checking that %s sorts correctly... @?" name;
+let test_one sorter =
+  Format.printf "Checking that %s sorts correctly... @?" sorter.name;
   try
     let nb = 100 in
     Format.printf "[0] @?";
-    test ~sort ~gen:gen_unif ~nb ~len:0;
+    test ~sort:sorter.sorter ~gen:gen_unif ~nb ~len:0;
     for log2_len = 0 to 5 do
       let len = 1 lsl (3 * log2_len) in
       Format.printf "[%d] @?" len;
-      test ~sort ~gen:gen_unif ~nb ~len;
-      test ~sort ~gen:(gen_k_runs 5) ~nb ~len
+      test ~sort:sorter.sorter ~gen:gen_unif ~nb ~len;
+      test ~sort:sorter.sorter ~gen:(gen_k_runs 5) ~nb ~len
     done;
     Format.printf "done.@."
   with
@@ -42,15 +42,15 @@ let test_one (name, sort) =
     Format.printf "it does NOT!@.";
     failure := true
 
-let test_one_stable (name, sort) =
-  Format.printf "Checking that %s sorts in a stable way... @?" name;
+let test_one_stable sorter =
+  Format.printf "Checking that %s sorts in a stable way... @?" sorter.name;
   try
     let nb = 20 in
     for log2_len = 1 to 5 do
       let len = 1 lsl (3 * log2_len) in
       Format.printf "[%d] @?" len;
-      test_stable ~sort ~gen:gen_unif ~nb ~len;
-      test_stable ~sort ~gen:(gen_k_runs 5) ~nb ~len
+      test_stable ~sort:sorter.sorter ~gen:gen_unif ~nb ~len;
+      test_stable ~sort:sorter.sorter ~gen:(gen_k_runs 5) ~nb ~len
     done;
     Format.printf "done.@."
   with
@@ -58,5 +58,8 @@ let test_one_stable (name, sort) =
     Format.printf "it does NOT!@.";
     failure := true
 
-let () = List.iter test_one allarraysorts
-let () = List.iter test_one_stable allarraysorts
+let () =
+  all_sorters |> List.iter @@ fun sorter ->
+  test_one sorter;
+  if sorter.stable then
+    test_one_stable sorter

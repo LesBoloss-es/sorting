@@ -190,27 +190,3 @@ let timsort (cmp: 'a cmp) (t: 'a array) =
   in
 
   sort 0 []
-
-
-let%test _ =
-  let t = [|0;6;2;6;4;1;9;7|] in
-  let t_sorted = Array.copy t in
-  Array.sort Int.compare t_sorted;
-  timsort Int.compare t;
-  t = t_sorted
-
-let%test _ =
-  let t = Array.mapi (fun i x -> i, x) [|0;6;2;6;0;1;0;2|] in
-  let t_sorted = Array.copy t in
-  let cmp (_, x) (_, y) = Int.compare x y in
-  Array.stable_sort cmp t_sorted;
-  timsort cmp t;
-  t = t_sorted
-
-let%test _ =
-  timsort compare [||]; true
-
-let%test _ =
-  let t = [|true|] in
-  timsort Bool.compare t;
-  t.(0)
