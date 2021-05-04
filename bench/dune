@@ -1,0 +1,13 @@
+(library
+ (name Table)
+ (modules Table))
+
+(executable
+ (name arrays)
+ (modules arrays)
+ (libraries sorting_array genlib unix Table))
+
+(executable
+ (name lists)
+ (modules lists)
+ (libraries sorting unix))
