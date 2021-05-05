@@ -10,8 +10,6 @@ type 'a cmp = 'a -> 'a -> int
 
 let minRunLen = 16
 
-let null_index = Int.min_int
-
 (* FIXME: nodePower, which should be the best implementation, is completely
    buggy and does not pass the associated tests. In the rest of the code, we
    will replace it by one of the other nodePower* but this will slow down the
@@ -82,6 +80,8 @@ let%test _ = nodePowerLoop 1 100 10 20 25 = 4
 let%test _ = nodePowerLoop 0 21 8 12 13 = 1
 let%test _ = nodePowerLoop 0 21 19 20 20 = 5
 let%test _ = nodePowerLoop 0 (100*1000*1000) 55555555 55555666 55556666 = 16
+
+let null_index = Int.min_int
 
 let powersort (cmp: 'a cmp) (a: 'a array) (left: int) (right: int) =
 	let n = right - left + 1 in
