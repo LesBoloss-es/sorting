@@ -117,11 +117,12 @@ let reference benchs getter length =
     all_sorters
 
 let build_bench_table benchs getter fmt =
-  (
+  let heading =
     string_cell "lengths"
     :: string_cell "stable"
     :: List.concat_map (fun length -> [ int_cell length ; string_cell "%" ]) lengths
-  ) :: (
+  in
+  let content =
     all_sorters |> List.map @@ fun sorter ->
     string_cell sorter.name
     :: string_cell (if sorter.stable then "yes" else "no")
@@ -133,16 +134,18 @@ let build_bench_table benchs getter fmt =
       [ fmt_cell (fun () -> result) ~fmt ;
         string_cell (if slowdown = "0" then "" else Format.sprintf "(%s%%)" slowdown) ]
     )
-  )
+  in
+  (heading, content)
 
 let cell_styles =
-  (Auto (ref 14), Left)
-  :: (Auto (ref 6), Right)
-  :: (List.map (fun _ -> [ (Auto (ref 6), Right) ; (Auto (ref 5), Right) ]) lengths
+  ("", Left)
+  :: (" | ", Right)
+  :: (List.map (fun _ -> [ (" | ", Right) ; (" ", Right) ]) lengths
       |> List.flatten)
 
 let print_bench_table title benchs getter fmt =
-  print_table ~title ~cell_styles (build_bench_table benchs getter fmt)
+  let (heading, content) = build_bench_table benchs getter fmt in
+  print_table ~title ~cell_styles ~heading content
 
 let () = Format.printf "Computing benchmarks on uniformly chosen arrays...@."
 let benchs_unif = compute_benchs ~generator:gen_unif
@@ -152,14 +155,14 @@ let () = Format.printf "Computing benchmarks on arrays with 5 runs...@."
 let benchs_5runs = compute_benchs ~generator:(gen_k_runs 5)
 let () = Format.printf "@."
 
-let () = print_bench_table "Unif -- Runtime" benchs_unif (fun result -> result.runtime) "%.2f"
+let () = print_bench_table "Unif - Runtime" benchs_unif (fun result -> result.runtime) "%.2f"
 let () = Format.printf "@."
 
-let () = print_bench_table "Unif -- Comparisons" benchs_unif (fun result -> result.comparisons) "%.0f"
+let () = print_bench_table "Unif - Comparisons" benchs_unif (fun result -> result.comparisons) "%.0f"
 let () = Format.printf "@."
 
-let () = print_bench_table "5-Runs -- Runtime" benchs_5runs (fun result -> result.runtime) "%.2f"
+let () = print_bench_table "5-Runs - Runtime" benchs_5runs (fun result -> result.runtime) "%.2f"
 let () = Format.printf "@."
 
-let () = print_bench_table "5-Runs -- Comparisons" benchs_5runs (fun result -> result.comparisons) "%.0f"
+let () = print_bench_table "5-Runs - Comparisons" benchs_5runs (fun result -> result.comparisons) "%.0f"
 let () = Format.printf "@."
