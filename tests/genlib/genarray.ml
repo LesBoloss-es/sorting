@@ -1,5 +1,7 @@
-let gen_unif len =
-  Array.init len (fun _ -> Random.bits ())
+let max_random_int = (1 lsl 30) - 1
+
+let gen_unif ?(limit=max_random_int) len =
+  Array.init len (fun _ -> Random.int limit)
 
 let gen_run ~asc t ofs len =
   let (+-), limit =

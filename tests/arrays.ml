@@ -49,8 +49,7 @@ let test_one_stable sorter =
     for log2_len = 1 to 5 do
       let len = 1 lsl (3 * log2_len) in
       Format.printf "[%d] @?" len;
-      test_stable ~sort:sorter.sorter ~gen:gen_unif ~nb ~len;
-      test_stable ~sort:sorter.sorter ~gen:(gen_k_runs 5) ~nb ~len
+      test_stable ~sort:sorter.sorter ~gen:(gen_unif ~limit:(len / 4)) ~nb ~len;
     done;
     Format.printf "done.@."
   with
