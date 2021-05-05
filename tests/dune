@@ -1,0 +1,9 @@
+(tests
+ (names arrays)
+ (modules arrays)
+ (libraries sorting_array genlib))
+
+(tests
+ (names lists)
+ (modules lists)
+ (libraries sorting))
