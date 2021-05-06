@@ -35,6 +35,11 @@ let mergeRuns (cmp: 'a cmp) (a: 'a array) (l: int) (m: int) (r: int) (b: 'a arra
         (let bi = b.(!i) in incr i; bi)
   done
 
+let%test _ =
+  let a = [|10; 20; 30; 40; 50; 5; 6; 7; 8; 100; 120|] in
+  mergeRuns Int.compare a 0 5 10 (Array.make 11 0);
+  a = [|5; 6; 7; 8; 10; 20; 30; 40; 50; 100; 120|]
+
 (** Reverse the specified range of the specified array.
 
 	  @param a  the array in which a range is to be reversed
@@ -46,8 +51,8 @@ let reverseRange (a: 'a array) (lo: int) (hi: int) =
   while !lo < !hi do
     let t = a.(!lo) in
     a.(!lo) <- a.(!hi);
-    a.(!hi) <- t;
     incr lo;
+    a.(!hi) <- t;
     decr hi
   done
 

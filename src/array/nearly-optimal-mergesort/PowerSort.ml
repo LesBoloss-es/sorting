@@ -10,8 +10,6 @@ type 'a cmp = 'a -> 'a -> int
 
 let minRunLen = 16
 
-let null_index = Int.min_int
-
 (* FIXME: nodePower, which should be the best implementation, is completely
    buggy and does not pass the associated tests. In the rest of the code, we
    will replace it by one of the other nodePower* but this will slow down the
@@ -22,8 +20,14 @@ let nodePower (left: int) (right: int) (startA: int) (startB: int) (endB: int) =
 	let l = startA + startB - (left lsl 1) in (* 2*middleA *)
   let r = startB + endB + 1 - (left lsl 1) in (* 2*middleB *)
   let a = (l lsl 30) / n in (* middleA / 2n *)
-  let b = (r lsl 30) / n in (* middleB / 2n *)
-  Base.Int.(clz (a lxor b))
+ let b = (r lsl 30) / n in (* middleB / 2n *)
+ (* Java's integers are 32 bits, and their number of leading zeros is defined
+    according to this. We substract 31 to the result here to go from 63 bits to
+    32. We could substract (Sys.int_size - 32) for genericity but there is not
+    guarantee that the rest of this function wouldn't overflow on 31 bits. So we
+    play it safe and add an assertion here. *)
+ assert (Sys.int_size = 63);
+ Base.Int.(clz (a lxor b)) - 31
 
 let%test _ = nodePower 1 100 10 20 25 = 4
 let%test _ = nodePower 0 21 8 12 13 = 1
@@ -32,25 +36,25 @@ let%test _ = nodePower 0 (100*1000*1000) 55555555 55555666 55556666 = 16
 
 let nodePowerBitwise (left: int) (right: int) (startA: int) (startB: int) (endB: int) =
 	assert (right < (1 lsl 30)); (* otherwise nt2, l and r will overflow *)
- let n = right - left + 1 in
- let l = ref (startA - (left lsl 1) + startB) in
- let r = ref (startB - (left lsl 1) + endB + 1) in
- (* a and b are given by l/nt2 and r/nt2, both are in [0,1).
-	  we have to find the number of common digits in the
-    binary representation in the fractional part. *)
- let nCommonBits = ref 0 in
- let digitA = ref (!l >= n) in
- let digitB = ref (!r >= n) in
- while !digitA = !digitB do
-   incr nCommonBits;
-   l := !l - (if !digitA then n else 0);
-   r := !r - (if !digitA then n else 0);
-   l := !l lsl 1;
-   r := !r lsl 1;
-   digitA := !l >= n;
-   digitB := !r >= n
- done;
- !nCommonBits + 1
+  let n = right - left + 1 in
+  let l = ref (startA - (left lsl 1) + startB) in
+  let r = ref (startB - (left lsl 1) + endB + 1) in
+  (* a and b are given by l/nt2 and r/nt2, both are in [0,1).
+	   we have to find the number of common digits in the
+     binary representation in the fractional part. *)
+  let nCommonBits = ref 0 in
+  let digitA = ref (!l >= n) in
+  let digitB = ref (!r >= n) in
+  while !digitA = !digitB do
+    incr nCommonBits;
+    l := !l - (if !digitA then n else 0);
+    r := !r - (if !digitA then n else 0);
+    l := !l lsl 1;
+    r := !r lsl 1;
+    digitA := !l >= n;
+    digitB := !r >= n
+  done;
+  !nCommonBits + 1
 
 let%test _ = nodePowerBitwise 1 100 10 20 25 = 4
 let%test _ = nodePowerBitwise 0 21 8 12 13 = 1
@@ -77,8 +81,7 @@ let%test _ = nodePowerLoop 0 21 8 12 13 = 1
 let%test _ = nodePowerLoop 0 21 19 20 20 = 5
 let%test _ = nodePowerLoop 0 (100*1000*1000) 55555555 55555666 55556666 = 16
 
-(* FIXME: this should not be necessary *)
-let nodePower = nodePowerBitwise
+let null_index = Int.min_int
 
 let powersort (cmp: 'a cmp) (a: 'a array) (left: int) (right: int) =
 	let n = right - left + 1 in
@@ -153,6 +156,6 @@ let powersort (cmp: 'a cmp) (a: 'a array) (left: int) (right: int) =
   else powersort cmp a left right
 
 (** This function is not given like this in the Java implementation but is here
-   for interoperability with the OCaml way of presenting sorting algorithms. *)
+    for interoperability with the OCaml way of presenting sorting algorithms. *)
 let sort (cmp: 'a cmp) (a: 'a array) =
   powersort cmp a 0 (Array.length a - 1)
