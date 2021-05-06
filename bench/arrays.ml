@@ -9,6 +9,9 @@ let log2_fact n =
   in
   log2_fact 0. n /. log 2. |> ceil |> int_of_float
 
+let list_concat_map f l =
+  l |> List.map f |> List.flatten
+
 let bench_one ~measure ~algorithm ~inputs () =
   let inputs = List.map Array.copy inputs in
   measure (fun cmp -> List.iter (algorithm cmp) inputs)
@@ -120,14 +123,14 @@ let build_bench_table benchs getter fmt =
   let heading =
     string_cell "lengths"
     :: string_cell "stable"
-    :: List.concat_map (fun length -> [ int_cell length ; string_cell "%" ]) lengths
+    :: list_concat_map (fun length -> [ int_cell length ; string_cell "%" ]) lengths
   in
   let content =
     all_sorters |> List.map @@ fun sorter ->
     string_cell sorter.name
     :: string_cell (if sorter.stable then "yes" else "no")
     :: (
-      lengths |> List.concat_map @@ fun length ->
+      lengths |> list_concat_map @@ fun length ->
       let reference = reference benchs getter length in
       let result = getter (get_bench_result ~sorter ~length benchs) in
       let slowdown = Format.sprintf "%.0f" (slowdown ~from:reference ~to_:result) in
