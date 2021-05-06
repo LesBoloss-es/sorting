@@ -21,11 +21,15 @@ let all_sorters =
       stable = true ;
       sorter = Timsort.timsort } ;
 
+    (** FIXME: PeekSort should be stable, but this implementation uses a merge
+       function which is not stable! *)
     { name = "peeksort" ;
-      stable = true ;
+      stable = false ;
       sorter = NearlyOptimalMergesort.PeekSort.sort } ;
 
+    (** FIXME: PowerSort should be stable, but this implementation uses a merge
+       function which is not stable! *)
     { name = "powersort" ;
-      stable = true ;
+      stable = false ;
       sorter = NearlyOptimalMergesort.PowerSort.sort } ;
   ]
