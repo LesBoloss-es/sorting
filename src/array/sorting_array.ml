@@ -23,13 +23,25 @@ let all_sorters =
 
     (** FIXME: PeekSort should be stable, but this implementation uses a merge
        function which is not stable! *)
-    { name = "peeksort" ;
+    { name = "nom/peeksort" ;
       stable = false ;
       sorter = NearlyOptimalMergesort.PeekSort.sort } ;
 
     (** FIXME: PowerSort should be stable, but this implementation uses a merge
        function which is not stable! *)
-    { name = "powersort" ;
+    { name = "nom/powersort" ;
       stable = false ;
       sorter = NearlyOptimalMergesort.PowerSort.sort } ;
+
+    (** FIXME: Bottom-Up Mergesort should be stable, but this implementation
+       uses a merge function which is not stable! *)
+    { name = "nom/bu-mergesort" ;
+      stable = false ;
+      sorter = NearlyOptimalMergesort.BottomUpMergesort.sort } ;
+
+    (** FIXME: Top-Down Mergesort should be stable, but this implementation
+        uses a merge function which is not stable! *)
+    { name = "nom/td-mergesort" ;
+      stable = false ;
+      sorter = NearlyOptimalMergesort.TopDownMergesort.sort } ;
   ]
