@@ -44,9 +44,9 @@ type 'a instance = {
 
   (** Temp storage for merges. A workspace array may optionally be provided in
       constructor, and if so will be used as long as it is big enough. *)
-  tmp : 'a array ;
-  tmpBase : int ; (* base of tmp array slice *)
-  tmpLen : int ; (* length of tmp array slice *)
+  mutable tmp : 'a array ;
+  mutable tmpBase : int ; (* base of tmp array slice *)
+  mutable tmpLen : int ; (* length of tmp array slice *)
 
   (** A stack of pending runs yet to be merged. Run i starts at address base[i]
      and extends for len[i] elements. It's always true (so long as the indices
@@ -302,6 +302,33 @@ let gallopLeft (cmp: 'a cmp) (key: 'a) (a: 'a array) (base: int) (len: int) (hin
   done;
   assert (!lastOfs = !ofs); (* so a[base + ofs - 1] < key <= a[base + ofs] *)
   !ofs
+
+(** Ensures that the external array tmp has at least the specified number of
+   elements, increasing its size if necessary. The size increases exponentially
+   to ensure amortized linear time complexity. *)
+let ensureCapacity (this: 'a instance) (minCapacity: int) =
+  if this.tmpLen < minCapacity then
+    (
+      (* Compute smallest power of 2 > minCapacity *)
+      let newSize = ref minCapacity in
+      newSize := !newSize lor (!newSize lsr 1);
+      newSize := !newSize lor (!newSize lsr 2);
+      newSize := !newSize lor (!newSize lsr 4);
+      newSize := !newSize lor (!newSize lsr 8);
+      newSize := !newSize lor (!newSize lsr 16);
+      incr newSize;
+
+      if !newSize < 0 then (* Not bloody likely! *)
+        newSize := minCapacity
+      else
+        newSize := min !newSize (Array.length this.a lsr 1);
+
+      let newArray = Array.make !newSize this.a.(0) in
+      this.tmp <- newArray;
+      this.tmpLen <- !newSize;
+      this.tmpBase <- 0
+    );
+  this.tmp
 
 (** Merges the two runs at stack indices i and i+1. Run i must be the
    penultimate or antepenultimate run on the stack. In other words, i must be
