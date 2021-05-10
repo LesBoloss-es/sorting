@@ -150,12 +150,3 @@ let powersort (cmp: 'a cmp) (a: 'a array) (left: int) (right: int) =
       )
   in
   for_loop !top
-
-let powersort (cmp: 'a cmp) (a: 'a array) (left: int) (right: int) =
-  if a = [||] then ()
-  else powersort cmp a left right
-
-(** This function is not given like this in the Java implementation but is here
-    for interoperability with the OCaml way of presenting sorting algorithms. *)
-let sort (cmp: 'a cmp) (a: 'a array) =
-  powersort cmp a 0 (Array.length a - 1)

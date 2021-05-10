@@ -40,7 +40,25 @@ let mergesort (cmp: 'a cmp) (a: 'a array) (left: int) (right: int) =
       done
     )
 
-(** This function is not given like this in the Java implementation but is here
-    for interoperability with the OCaml way of presenting sorting algorithms. *)
-let sort (cmp: 'a cmp) (a: 'a array) =
-  mergesort cmp a 0 (Array.length a - 1)
+let mergesortCheckSorted (cmp: 'a cmp) (a: 'a array) (left: int) (right: int) =
+  let n = right - left + 1 in
+  let b = Array.make (Array.length a) a.(0) in
+  if minRunLen <> 1 then
+    (
+      let len = minRunLen in
+      let i = ref left in
+      while !i <= right do
+        Insertionsort.insertionsort cmp a !i (min (!i + len - 1) right);
+        i := !i + len
+      done
+    );
+  let len = ref minRunLen in
+  while !len < n do
+    let i = ref left in
+    while !i <= right - !len do
+      if cmp a.(!i + !len - 1) a.(!i + !len) > 0 then
+        mergeRuns cmp a !i (!i + !len) (min (!i + !len + !len - 1) right) b;
+      i := !i + !len + !len
+    done;
+    len := !len * 2
+  done

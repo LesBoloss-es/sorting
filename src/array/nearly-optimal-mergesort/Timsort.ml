@@ -814,10 +814,3 @@ let sort (cmp: 'a cmp) (a: 'a array) (lo: int) (hi: int) =
       mergeForceCollapse ts;
       assert (ts.stackSize = 1)
     )
-
-(** This function is not given like this in the Java implementation but is here
-    for interoperability with the OCaml way of presenting sorting algorithms. *)
-let sort (cmp: 'a cmp) (a: 'a array) =
-  (* The index of the last element is exclusive in this sort. *)
-  if a <> [||] then
-    sort cmp a 0 (Array.length a)
