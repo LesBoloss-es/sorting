@@ -99,23 +99,13 @@ let make_instance (cmp: 'a cmp) (a: 'a array) (work: 'a array option) (workBase:
     tmp; tmpBase; tmpLen;
     stackSize = 0; runBase; runLen }
 
-(**
-   Sorts the specified portion of the specified array using a binary
-   insertion sort.  This is the best method for sorting small numbers
-   of elements.  It requires O(n log n) compares, but O(n^2) data
-   movement (worst case).
+(** Sorts the specified portion of the specified array using a binary insertion
+   sort. This is the best method for sorting small numbers of elements. It
+   requires O(n log n) compares, but O(n^2) data movement (worst case).
 
-   If the initial part of the specified range is already sorted,
-   this method can take advantage of it: the method assumes that the
-   elements from index {@code lo}, inclusive, to {@code start},
-   exclusive are already sorted.
-
-   @param a the array in which a range is to be sorted
-   @param lo the index of the first element in the range to be sorted
-   @param hi the index after the last element in the range to be sorted
-   @param start the index of the first element in the range that is
-         not already known to be sorted ({@code lo <= start <= hi})
-*)
+   If the initial part of the specified range is already sorted, this method can
+   take advantage of it: the method assumes that the elements from index [lo],
+   inclusive, to [start], exclusive are already sorted. *)
 let binarySort (cmp: 'a cmp) (a: 'a array) (lo: int) (hi: int) (start: int) =
   assert (lo <= start && start <= hi);
 
@@ -828,5 +818,6 @@ let sort (cmp: 'a cmp) (a: 'a array) (lo: int) (hi: int) =
 (** This function is not given like this in the Java implementation but is here
     for interoperability with the OCaml way of presenting sorting algorithms. *)
 let sort (cmp: 'a cmp) (a: 'a array) =
+  (* The index of the last element is exclusive in this sort. *)
   if a <> [||] then
-    sort cmp a 0 (Array.length a - 1)
+    sort cmp a 0 (Array.length a)
