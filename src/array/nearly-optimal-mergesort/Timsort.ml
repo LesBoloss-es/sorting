@@ -1,31 +1,31 @@
 type 'a cmp = 'a -> 'a -> int
 
 (** This is the minimum sized sequence that will be merged. Shorter sequences
-   will be lengthened by calling binarySort. If the entire array is less than
-   this length, no merges will be performed.
+    will be lengthened by calling binarySort. If the entire array is less than
+    this length, no merges will be performed.
 
-   This constant should be a power of two. It was 64 in Tim Peter's C
-   implementation, but 32 was empirically determined to work better in this
-   implementation. In the unlikely event that you set this constant to be a
-   number that's not a power of two, you'll need to change the {@link
-   #minRunLength} computation.
+    This constant should be a power of two. It was 64 in Tim Peter's C
+    implementation, but 32 was empirically determined to work better in this
+    implementation. In the unlikely event that you set this constant to be a
+    number that's not a power of two, you'll need to change the {@link
+    #minRunLength} computation.
 
-   If you decrease this constant, you must change the stackLen computation in
-   the TimSort constructor, or you risk an ArrayOutOfBounds exception. See
-   listsort.txt for a discussion of the minimum stack length required as a
-   function of the length of the array being sorted and the minimum merge
-   sequence length. *)
+    If you decrease this constant, you must change the stackLen computation in
+    the TimSort constructor, or you risk an ArrayOutOfBounds exception. See
+    listsort.txt for a discussion of the minimum stack length required as a
+    function of the length of the array being sorted and the minimum merge
+    sequence length. *)
 
 let min_merge = 32
 
 (** When we get into galloping mode, we stay there until both runs win less
-   often than MIN_GALLOP consecutive times. *)
+    often than MIN_GALLOP consecutive times. *)
 let min_gallop = 7
 
 (** Maximum initial size of tmp array, which is used for merging. The array can
-   grow to accommodate demand. Unlike Tim's original C version, we do not
-   allocate this much storage when sorting smaller arrays. This change was
-   required for performance. *)
+    grow to accommodate demand. Unlike Tim's original C version, we do not
+    allocate this much storage when sorting smaller arrays. This change was
+    required for performance. *)
 let initial_tmp_storage_length = 256
 
 type 'a instance = {
@@ -36,8 +36,8 @@ type 'a instance = {
   cmp : 'a cmp ;
 
   (** This controls when we get *into* galloping mode. It is initialized to
-     MIN_GALLOP. The mergeLo and mergeHi methods nudge it higher for random
-     data, and lower for highly structured data. *)
+      MIN_GALLOP. The mergeLo and mergeHi methods nudge it higher for random
+      data, and lower for highly structured data. *)
   mutable minGallop : int ; (* default: MIN_GALLOP *)
 
   (** Temp storage for merges. A workspace array may optionally be provided in
@@ -47,13 +47,13 @@ type 'a instance = {
   mutable tmpLen : int ; (* length of tmp array slice *)
 
   (** A stack of pending runs yet to be merged. Run i starts at address base[i]
-     and extends for len[i] elements. It's always true (so long as the indices
-     are in bounds) that:
+      and extends for len[i] elements. It's always true (so long as the indices
+      are in bounds) that:
 
          runBase[i] + runLen[i] == runBase[i + 1]
 
-     so we could cut the storage for this, but it's a minor amount, and keeping
-     all the info explicit simplifies the code. *)
+      so we could cut the storage for this, but it's a minor amount, and keeping
+      all the info explicit simplifies the code. *)
   mutable stackSize : int ; (* default: 0 *) (* Number of pending runs on stack *)
   runBase : int array ;
   runLen : int array
@@ -99,23 +99,23 @@ let make_instance (cmp: 'a cmp) (a: 'a array) (work: 'a array option) (workBase:
     tmp; tmpBase; tmpLen;
     stackSize = 0; runBase; runLen }
 
-    (**
-      Sorts the specified portion of the specified array using a binary
-      insertion sort.  This is the best method for sorting small numbers
-      of elements.  It requires O(n log n) compares, but O(n^2) data
-      movement (worst case).
+(**
+   Sorts the specified portion of the specified array using a binary
+   insertion sort.  This is the best method for sorting small numbers
+   of elements.  It requires O(n log n) compares, but O(n^2) data
+   movement (worst case).
 
-      If the initial part of the specified range is already sorted,
-      this method can take advantage of it: the method assumes that the
-      elements from index {@code lo}, inclusive, to {@code start},
-      exclusive are already sorted.
+   If the initial part of the specified range is already sorted,
+   this method can take advantage of it: the method assumes that the
+   elements from index {@code lo}, inclusive, to {@code start},
+   exclusive are already sorted.
 
-      @param a the array in which a range is to be sorted
-      @param lo the index of the first element in the range to be sorted
-      @param hi the index after the last element in the range to be sorted
-      @param start the index of the first element in the range that is
-             not already known to be sorted ({@code lo <= start <= hi})
-    *)
+   @param a the array in which a range is to be sorted
+   @param lo the index of the first element in the range to be sorted
+   @param hi the index after the last element in the range to be sorted
+   @param start the index of the first element in the range that is
+         not already known to be sorted ({@code lo <= start <= hi})
+*)
 let binarySort (cmp: 'a cmp) (a: 'a array) (lo: int) (hi: int) (start: int) =
   assert (lo <= start && start <= hi);
 
@@ -204,7 +204,7 @@ let reverseRange (a: 'a array) (lo: int) (hi: int) =
              It is required that {@code lo < hi}.
       @return  the length of the run beginning at the specified position in
                the specified array
-    *)
+*)
 let countRunAndMakeAscending (cmp: 'a cmp) (a: 'a array) (lo: int) (hi: int) =
   assert (lo < hi);
   let runHi = ref (lo + 1) in
@@ -362,8 +362,8 @@ let gallopRight (cmp: 'a cmp) (key: 'a) (a: 'a array) (base: int) (len: int) (hi
   !ofs
 
 (** Ensures that the external array tmp has at least the specified number of
-   elements, increasing its size if necessary. The size increases exponentially
-   to ensure amortized linear time complexity. *)
+    elements, increasing its size if necessary. The size increases exponentially
+    to ensure amortized linear time complexity. *)
 let ensureCapacity (this: 'a instance) (minCapacity: int) =
   if this.tmpLen < minCapacity then
     (
@@ -390,15 +390,15 @@ let ensureCapacity (this: 'a instance) (minCapacity: int) =
 
 exception BreakOuter
 
-    (**
-      Merges two adjacent runs in place, in a stable fashion.  The first
-      element of the first run must be greater than the first element of the
-      second run (a[base1] > a[base2]), and the last element of the first run
-      (a[base1 + len1-1]) must be greater than all elements of the second run.
+(**
+   Merges two adjacent runs in place, in a stable fashion.  The first
+   element of the first run must be greater than the first element of the
+   second run (a[base1] > a[base2]), and the last element of the first run
+   (a[base1 + len1-1]) must be greater than all elements of the second run.
 
-      For performance, this method should be called only when len1 <= len2;
-      its twin, mergeHi should be called if len1 >= len2.  (Either method
-       may be called if len1 == len2.) *)
+   For performance, this method should be called only when len1 <= len2;
+   its twin, mergeHi should be called if len1 >= len2.  (Either method
+   may be called if len1 == len2.) *)
 let mergeLo (this: 'a instance) (base1: int) (len1: int) (base2: int) (len2: int) =
   assert (len1 > 0 && len2 > 0 && base1 + len1 = base2);
   let len1 = ref len1 in
@@ -532,8 +532,8 @@ let mergeLo (this: 'a instance) (base1: int) (len1: int) (base2: int) (len2: int
     )
 
 (** Like mergeLo, except that this method should be called only if len1 >= len2;
-   mergeLo should be called if len1 <= len2. (Either method may be called if
-   len1 == len2.) *)
+    mergeLo should be called if len1 <= len2. (Either method may be called if
+    len1 == len2.) *)
 let mergeHi (this: 'a instance) (base1: int) (len1: int) (base2: int) (len2: int) =
   assert (len1 > 0 && len2 > 0 && base1 + len1 = base2);
   let len1 = ref len1 in
@@ -653,7 +653,7 @@ let mergeHi (this: 'a instance) (base1: int) (len1: int) (base2: int) (len2: int
             minGallop := !minGallop + 2; (* Penalize for leaving gallop mode *)
           done (* End of "outer" loop *)
         with
-        BreakOuter -> ()
+          BreakOuter -> ()
       );
       this.minGallop <- if !minGallop < 1 then 1 else !minGallop; (* Write back to field *)
 
@@ -676,8 +676,8 @@ let mergeHi (this: 'a instance) (base1: int) (len1: int) (base2: int) (len2: int
     )
 
 (** Merges the two runs at stack indices i and i+1. Run i must be the
-   penultimate or antepenultimate run on the stack. In other words, i must be
-   equal to stackSize-2 or stackSize-3. *)
+    penultimate or antepenultimate run on the stack. In other words, i must be
+    equal to stackSize-2 or stackSize-3. *)
 let mergeAt (this: 'a instance) (i: int) =
   assert (this.stackSize >= 2);
   assert (i >= 0);
@@ -752,7 +752,7 @@ let mergeCollapse (this: 'a instance) =
   while_ ()
 
 (** Merges all runs on the stack until only one remains. This method is called
-   once, to complete the sort. *)
+    once, to complete the sort. *)
 let mergeForceCollapse (this: 'a instance) =
   while this.stackSize > 1 do
     let n = ref (this.stackSize - 2) in
@@ -762,9 +762,9 @@ let mergeForceCollapse (this: 'a instance) =
   done
 
 (** Sorts the given range, using the given workspace array slice for temp
-   storage when possible. This method is designed to be invoked from public
-   methods (in class Arrays) after performing any necessary array bounds checks
-   and expanding parameters into the required forms. *)
+    storage when possible. This method is designed to be invoked from public
+    methods (in class Arrays) after performing any necessary array bounds checks
+    and expanding parameters into the required forms. *)
 let sort (cmp: 'a cmp) (a: 'a array) (lo: int) (hi: int) =
   assert (lo >= 0 && lo <= hi && hi <= Array.length a);
 
