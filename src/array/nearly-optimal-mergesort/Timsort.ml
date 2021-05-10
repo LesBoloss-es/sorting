@@ -1,5 +1,3 @@
-
-
 type 'a cmp = 'a -> 'a -> int
 
 (** This is the minimum sized sequence that will be merged. Shorter sequences
@@ -40,7 +38,7 @@ type 'a instance = {
   (** This controls when we get *into* galloping mode. It is initialized to
      MIN_GALLOP. The mergeLo and mergeHi methods nudge it higher for random
      data, and lower for highly structured data. *)
-  minGallop : int ; (* default: MIN_GALLOP *)
+  mutable minGallop : int ; (* default: MIN_GALLOP *)
 
   (** Temp storage for merges. A workspace array may optionally be provided in
       constructor, and if so will be used as long as it is big enough. *)
@@ -303,6 +301,66 @@ let gallopLeft (cmp: 'a cmp) (key: 'a) (a: 'a array) (base: int) (len: int) (hin
   assert (!lastOfs = !ofs); (* so a[base + ofs - 1] < key <= a[base + ofs] *)
   !ofs
 
+(**
+   Like gallopLeft, except that if the range contains an element equal to
+   key, gallopRight returns the index after the rightmost equal element. *)
+let gallopRight (cmp: 'a cmp) (key: 'a) (a: 'a array) (base: int) (len: int) (hint: int) =
+	assert (len > 0 && hint >= 0 && hint < len);
+
+  let ofs = ref 1 in
+  let lastOfs = ref 0 in
+  if cmp key a.(base + hint) < 0 then
+    (
+      (* Gallop left until a[b+hint - ofs] <= key < a[b+hint - lastOfs] *)
+      let maxOfs = hint + 1 in
+      while !ofs < maxOfs && cmp key a.(base + hint - !ofs) < 0 do
+        lastOfs := !ofs;
+        ofs := (!ofs lsl 1) + 1;
+        if !ofs <= 0 then (* int overflow *)
+          ofs := maxOfs
+      done;
+      if !ofs > maxOfs then
+        ofs := maxOfs;
+
+      (* Make offsets relative to b *)
+      let tmp = !lastOfs in
+      lastOfs := hint - !ofs;
+      ofs := hint - tmp;
+    )
+  else (* a[b + hint] <= key *)
+    (
+      (* Gallop right until a[b+hint + lastOfs] <= key < a[b+hint + ofs] *)
+      let maxOfs = len - hint in
+      while !ofs < maxOfs && cmp key a.(base + hint + !ofs) >= 0 do
+        lastOfs := !ofs;
+        ofs := (!ofs lsl 1) + 1;
+        if !ofs <= 0 then (* int overflow *)
+          ofs := maxOfs
+      done;
+      if !ofs > maxOfs then
+        ofs := maxOfs;
+
+      (* Make offsets relative to b *)
+      lastOfs := !lastOfs + hint;
+      ofs := !ofs + hint
+    );
+  assert (-1 <= !lastOfs && !lastOfs < !ofs && !ofs <= len);
+
+  (* Now a[b + lastOfs] <= key < a[b + ofs], so key belongs somewhere to the
+     right of lastOfs but no farther right than ofs. Do a binary search, with
+     invariant a[b + lastOfs - 1] <= key < a[b + ofs]. *)
+  incr lastOfs;
+  while !lastOfs < !ofs do
+    let m = !lastOfs + ((!ofs - !lastOfs) lsr 1) in
+
+    if cmp key a.(base + m) < 0 then
+      ofs := m (* key < a[b + m] *)
+    else
+      lastOfs := m + 1 (* a[b + m] <= key *)
+  done;
+  assert (!lastOfs = !ofs); (* so a[b + ofs - 1] <= key < a[b + ofs] *)
+  !ofs
+
 (** Ensures that the external array tmp has at least the specified number of
    elements, increasing its size if necessary. The size increases exponentially
    to ensure amortized linear time complexity. *)
@@ -329,6 +387,149 @@ let ensureCapacity (this: 'a instance) (minCapacity: int) =
       this.tmpBase <- 0
     );
   this.tmp
+
+exception BreakOuter
+
+    (**
+      Merges two adjacent runs in place, in a stable fashion.  The first
+      element of the first run must be greater than the first element of the
+      second run (a[base1] > a[base2]), and the last element of the first run
+      (a[base1 + len1-1]) must be greater than all elements of the second run.
+     
+      For performance, this method should be called only when len1 <= len2;
+      its twin, mergeHi should be called if len1 >= len2.  (Either method
+       may be called if len1 == len2.) *)
+let mergeLo (this: 'a instance) (base1: int) (len1: int) (base2: int) (len2: int) =
+  assert (len1 > 0 && len2 > 0 && base1 + len1 = base2);
+  let len1 = ref len1 in
+  let len2 = ref len2 in
+
+  (* Copy first run into temp array *)
+  let a = this.a in (* For performance *)
+  let tmp = ensureCapacity this !len1 in
+  let cursor1 = ref this.tmpBase in (* Indexes into tmp array *)
+  let cursor2 = ref base2 in   (* Indexes int a *)
+  let dest = ref base1 in      (* Indexes int a *)
+  Array.blit a base1 tmp !cursor1 !len1;
+
+  (* Move first element of second run and deal with degenerate cases *)
+  a.(!dest) <- a.(!cursor2);
+  incr dest; incr cursor2;
+  decr len2;
+  if !len2 = 0 then
+    (
+      Array.blit tmp !cursor1 a !dest !len1
+    )
+  else if !len1 = 1 then
+    (
+      Array.blit a !cursor2 a !dest !len2;
+      a.(!dest + !len2) <- tmp.(!cursor1); (* Last elt of run 1 to end of merge *)
+    )
+  else
+    (
+      let minGallop = ref this.minGallop in (* Use local variable for performance *)
+      (
+        try
+          while true do
+            let count1 = ref 0 in (* Number of times in a row that first run won *)
+            let count2 = ref 0 in (* Number of times in a row that second run won *)
+
+            (* Do the straightforward thing until (if ever) one run starts winning
+               consistently. *)
+            let rec do_while_1 () =
+              assert (!len1 > 1 && !len2 > 0);
+              if this.cmp a.(!cursor2) tmp.(!cursor1) < 0 then
+                (
+                  a.(!dest) <- a.(!cursor2);
+                  incr dest; incr cursor2;
+                  incr count2;
+                  count1 := 0;
+                  decr len2;
+                  if !len2 = 0 then
+                    raise BreakOuter
+                )
+              else
+                (
+                  a.(!dest) <- tmp.(!cursor1);
+                  incr dest; incr cursor1;
+                  incr count1;
+                  count2 := 0;
+                  decr len1;
+                  if !len1 = 1 then
+                    raise BreakOuter
+                );
+              if (!count1 lor !count2) < !minGallop then
+                do_while_1 ()
+            in
+            do_while_1 ();
+
+            (*
+              One run is winning so consistently that galloping may be a
+              huge win. So try that, and continue galloping until (if ever)
+              neither run appears to be winning consistently anymore.
+             *)
+            let rec do_while_2 () =
+              assert (!len1 > 1 && !len2 > 0);
+              count1 := gallopRight this.cmp a.(!cursor2) tmp !cursor1 !len1 0;
+              if (!count1 <> 0) then
+                (
+                  Array.blit tmp !cursor1 a !dest !count1;
+                  dest := !dest + !count1;
+                  cursor1 := !cursor1 + !count1;
+                  len1 := !len1 - !count1;
+                  if !len1 <= 1 then (* len1 = 1 || len1 = 0 *)
+                    raise BreakOuter;
+                );
+              a.(!dest) <- a.(!cursor2);
+              incr dest; incr cursor2;
+              decr len2;
+              if !len2 = 0 then
+                raise BreakOuter;
+
+              count2 := gallopLeft this.cmp tmp.(!cursor1) a !cursor2 !len2 0;
+              if !count2 <> 0 then
+                (
+                  Array.blit a !cursor2 a !dest !count2;
+                  dest := !dest + !count2;
+                  cursor2 := !cursor2 + !count2;
+                  len2 := !len2 - !count2;
+                  if !len2 = 0 then
+                    raise BreakOuter
+                );
+              a.(!dest) <- tmp.(!cursor1);
+              incr dest; incr cursor1;
+              decr len1;
+              if !len1 = 1 then
+                raise BreakOuter;
+              decr minGallop;
+              if !count1 >= min_gallop || !count2 >= min_gallop then
+                do_while_2 ()
+            in
+            do_while_2 ();
+            if !minGallop < 0 then
+              minGallop := 0;
+            minGallop := !minGallop + 2 (* Penalize for leaving gallop mode *)
+          done  (* End of "outer" loop *)
+        with
+          BreakOuter -> ()
+      );
+      this.minGallop <- if !minGallop < 1 then 1 else !minGallop; (* Write back to field *)
+
+      if !len1 = 1 then
+        (
+          assert (!len2 > 0);
+          Array.blit a !cursor2 a !dest !len2;
+          a.(!dest + !len2) <- tmp.(!cursor1); (* Last elt of run 1 to end of merge *)
+        )
+      else if !len1 = 0 then
+        invalid_arg "Comparison method violates its general contract!"
+      else
+        (
+          assert (!len2 = 0);
+          assert (!len1 > 1);
+          Array.blit tmp !cursor1 a !dest !len1
+        )
+    )
 
 (** Merges the two runs at stack indices i and i+1. Run i must be the
    penultimate or antepenultimate run on the stack. In other words, i must be
@@ -358,7 +559,7 @@ let mergeAt (this: 'a instance) (i: int) =
 
   (* Find where the first element of run2 goes in run1. Prior elements in run1
      can be ignored (because they're already in place). *)
-  let k = gallopRight this.cmp this.a.(base2) this.a base1 len1 0 in
+  let k = gallopRight this.cmp this.a.(base2) this.a !base1 !len1 0 in
   assert (k >= 0);
   base1 := !base1 + k;
   len1 := !len1 - k;
@@ -376,9 +577,9 @@ let mergeAt (this: 'a instance) (i: int) =
         (
           (* Merge remaining runs, using tmp array with min(len1, len2) elements *)
           if !len1 <= len2 then
-            mergeLo this base1 len1 base2 len2
+            mergeLo this !base1 !len1 base2 len2
           else
-            mergeHi this base1 len1 base2 len2
+            mergeHi this !base1 !len1 base2 len2
         )
     )
 
