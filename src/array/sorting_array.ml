@@ -33,6 +33,10 @@ let all_sorters =
       stable = false ;
       sorter = NearlyOptimalMergesort.PowerSort.sort } ;
 
+    { name = "nom/timsort" ;
+      stable = true ;
+      sorter = NearlyOptimalMergesort.Timsort.sort } ;
+
     (** FIXME: Bottom-Up Mergesort should be stable, but this implementation
        uses a merge function which is not stable! *)
     { name = "nom/bu-mergesort" ;

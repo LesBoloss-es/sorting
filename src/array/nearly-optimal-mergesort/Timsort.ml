@@ -68,7 +68,7 @@ type 'a instance = {
     @param work a workspace array (slice)
     @param workBase origin of usable space in work array
     @param workLen usable size of work array *)
-let make_instance (cmp: 'a cmp) (a: 'a array) (work: int array option) (workBase: int) (workLen: int) =
+let make_instance (cmp: 'a cmp) (a: 'a array) (work: 'a array option) (workBase: int) (workLen: int) =
 
   (* Allocated temp storage (which may be increased later if necessary)*)
   let len = Array.length a in
@@ -80,7 +80,7 @@ let make_instance (cmp: 'a cmp) (a: 'a array) (work: int array option) (workBase
   in
   let (tmp, tmpBase, tmpLen) =
     if work = None || workLen < tlen || workBase + tlen > Array.length (Option.get work) then
-      (Array.make tlen 0, 0, tlen)
+      (Array.make tlen a.(0), 0, tlen)
     else
       (Option.get work, workBase, workLen)
   in
@@ -395,7 +395,7 @@ exception BreakOuter
       element of the first run must be greater than the first element of the
       second run (a[base1] > a[base2]), and the last element of the first run
       (a[base1 + len1-1]) must be greater than all elements of the second run.
-     
+
       For performance, this method should be called only when len1 <= len2;
       its twin, mergeHi should be called if len1 >= len2.  (Either method
        may be called if len1 == len2.) *)
@@ -528,6 +528,150 @@ let mergeLo (this: 'a instance) (base1: int) (len1: int) (base2: int) (len2: int
           assert (!len2 = 0);
           assert (!len1 > 1);
           Array.blit tmp !cursor1 a !dest !len1
+        )
+    )
+
+(** Like mergeLo, except that this method should be called only if len1 >= len2;
+   mergeLo should be called if len1 <= len2. (Either method may be called if
+   len1 == len2.) *)
+let mergeHi (this: 'a instance) (base1: int) (len1: int) (base2: int) (len2: int) =
+  assert (len1 > 0 && len2 > 0 && base1 + len1 = base2);
+  let len1 = ref len1 in
+  let len2 = ref len2 in
+
+  (* Copy second run into temp array *)
+  let a = this.a in (* For performance *)
+  let tmp = ensureCapacity this !len2 in
+  let tmpBase = this.tmpBase in
+  Array.blit a base2 tmp tmpBase !len2;
+
+  let cursor1 = ref (base1 + !len1 - 1) in (* Indexes into a *)
+  let cursor2 = ref (tmpBase + !len2 - 1) in (* Indexes into tmp array *)
+  let dest = ref (base2 + !len2 - 1) in (* Indexes into a *)
+
+  (* Move last element of first run and deal with degenerate cases *)
+  a.(!dest) <- a.(!cursor1);
+  decr dest; decr cursor1;
+  decr len1;
+  if !len1 = 0 then
+    (
+      Array.blit tmp tmpBase a (!dest - (!len2 - 1)) !len2;
+    )
+  else if !len2 = 1 then
+    (
+      dest := !dest - !len1;
+      cursor1 := !cursor1 - !len1;
+      Array.blit a (!cursor1 + 1) a (!dest + 1) !len1;
+      a.(!dest) <- tmp.(!cursor2);
+    )
+  else
+    (
+      (* Use local variable for performance *)
+      let minGallop = ref this.minGallop in (* ''    ''       ''     ''      '' *)
+      (
+        try
+          while true do
+            let count1 = ref 0 in (* Number of times in a row that first run won *)
+            let count2 = ref 0 in (* Number of times in a row that second run won *)
+
+            (*
+              Do the straightforward thing until (if ever) one run
+              appears to win consistently.
+             *)
+            let rec do_while_1 () =
+              assert (!len1 > 0 && !len2 > 1);
+              if this.cmp tmp.(!cursor2) a.(!cursor1) < 0 then
+                (
+                  a.(!dest) <- a.(!cursor1);
+                  decr dest; decr cursor1;
+                  incr count1;
+                  count2 := 0;
+                  decr len1;
+                  if !len1 = 0 then
+                    raise BreakOuter
+                )
+              else
+                (
+                  a.(!dest) <- tmp.(!cursor2);
+                  decr dest; decr cursor2;
+                  incr count2;
+                  count1 := 0;
+                  decr len2;
+                  if !len2 = 1 then
+                    raise BreakOuter
+                );
+              if (!count1 lor !count2) < !minGallop then
+                do_while_1 ()
+            in
+            do_while_1 ();
+
+            (*
+              One run is winning so consistently that galloping may be a
+              huge win. So try that, and continue galloping until (if ever)
+              neither run appears to be winning consistently anymore.
+             *)
+            let rec do_while_2 () =
+              assert (!len1 > 0 && !len2 > 1);
+              count1 := !len1 - gallopRight this.cmp tmp.(!cursor2) a base1 !len1 (!len1 - 1);
+              if !count1 <> 0 then
+                (
+                  dest := !dest - !count1;
+                  cursor1 := !cursor1 - !count1;
+                  len1 := !len1 - !count1;
+                  Array.blit a (!cursor1 + 1) a (!dest + 1) !count1;
+                  if !len1 = 0 then
+                    raise BreakOuter
+                );
+              a.(!dest) <- tmp.(!cursor2);
+              decr dest; decr cursor2;
+              decr len2;
+              if !len2 = 1 then
+                raise BreakOuter;
+
+              count2 := !len2 - gallopLeft this.cmp a.(!cursor1) tmp tmpBase !len2 (!len2 - 1);
+              if !count2 <> 0 then
+                (
+                  dest := !dest - !count2;
+                  cursor2 := !cursor2 - !count2;
+                  len2 := !len2 - !count2;
+                  Array.blit tmp (!cursor2 + 1) a (!dest + 1) !count2;
+                  if !len2 <= 1 then (* len2 = 1 || len2 = 0 *)
+                    raise BreakOuter
+                );
+              a.(!dest) <- a.(!cursor1);
+              decr dest; decr cursor1;
+              decr len1;
+              if !len1 = 0 then
+                raise BreakOuter;
+              decr minGallop;
+              if (!count1 >= min_gallop || !count2 >= min_gallop) then
+                do_while_2 ()
+            in
+            do_while_2 ();
+            if !minGallop < 0 then
+              minGallop := 0;
+            minGallop := !minGallop + 2; (* Penalize for leaving gallop mode *)
+          done (* End of "outer" loop *)
+        with
+        BreakOuter -> ()
+      );
+      this.minGallop <- if !minGallop < 1 then 1 else !minGallop; (* Write back to field *)
+
+      if !len2 = 1 then
+        (
+          assert (!len1 > 0);
+          dest := !dest - !len1;
+          cursor1 := !cursor1 - !len1;
+          Array.blit a (!cursor1 + 1) a (!dest + 1) !len1;
+          a.(!dest) <- tmp.(!cursor2); (* Move first elt of run2 to front of merge *)
+        )
+      else if !len2 = 0 then
+        invalid_arg "Comparison method violates its general contract!"
+      else
+        (
+          assert (!len1 = 0);
+          assert (!len2 > 0);
+          Array.blit tmp tmpBase a (!dest - (!len2 - 1)) !len2
         )
     )
 
@@ -680,3 +824,9 @@ let sort (cmp: 'a cmp) (a: 'a array) (lo: int) (hi: int) =
       mergeForceCollapse ts;
       assert (ts.stackSize = 1)
     )
+
+(** This function is not given like this in the Java implementation but is here
+    for interoperability with the OCaml way of presenting sorting algorithms. *)
+let sort (cmp: 'a cmp) (a: 'a array) =
+  if a <> [||] then
+    sort cmp a 0 (Array.length a - 1)
