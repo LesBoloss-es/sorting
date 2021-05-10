@@ -4,7 +4,7 @@ open Sorting_array
 
 let spf = Format.sprintf
 
-let usage_msg = spf "%s [OPTION ...]" Sys.argv.(0)
+let usage_msg = spf "%s [OPTION ...]\n\nOPTION can be:" Sys.argv.(0)
 
 let default_lengths = List.init 5 (fun i -> (i+ 1) * 30000)
 let lengths = ref default_lengths
@@ -28,12 +28,11 @@ let set_sorters s =
 let default_repeat = 50
 let repeat = ref 50
 
-let speclist =
-  Arg.[
+let speclist = [
     "--lengths", Arg.String set_lengths, "INTS Lengths to use (default: ...)";
     "--sorters", Arg.String set_sorters, "STRS Sorters to use (default: ...)";
     "--repeat", Arg.Set_int repeat, spf "INT Repetitions (default: %d)" default_repeat;
-  ]
+  ] |> Arg.align
 
 let anon_fun _ = assert false
 
