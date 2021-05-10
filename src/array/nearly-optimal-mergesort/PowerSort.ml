@@ -150,3 +150,76 @@ let powersort (cmp: 'a cmp) (a: 'a array) (left: int) (right: int) =
       )
   in
   for_loop !top
+
+let powersortBitWise (cmp: 'a cmp) (a: 'a array) (left: int) (right: int) =
+  let n = right - left + 1 in
+  let lgnPlus2 = Base.Int.floor_log2 n + 2 in
+  let leftRunStart = Array.make lgnPlus2 null_index in
+  let leftRunEnd = Array.make lgnPlus2 0 in
+  let top = ref 0 in
+  let buffer = Array.make n a.(0) in
+
+  let startA = ref left in
+  let endA = ref (extendAndReverseRunRight cmp a !startA right) in
+  while !endA < right do
+    let startB = !endA + 1 in
+    let endB = extendAndReverseRunRight cmp a startB right in
+    let k = nodePowerBitwise left right !startA startB endB in
+    assert (k <> !top);
+    (* clear left subtree bottom-up if needed *)
+    for l = !top downto k + 1 do
+      if leftRunStart.(l) = null_index then ()
+      else
+        (
+          mergeRuns cmp a leftRunStart.(l) (leftRunEnd.(l)+1) !endA buffer;
+          startA := leftRunStart.(l);
+          leftRunStart.(l) <- null_index
+        )
+    done;
+    (* store left half of merge between a and b *)
+    leftRunStart.(k) <- !startA;
+    leftRunEnd.(k) <- !endA;
+    top := k;
+    startA := startB; endA := endB
+  done;
+  assert (!endA = right);
+  for l = !top downto 1 do
+    if leftRunStart.(l) = null_index then ()
+    else mergeRuns cmp a leftRunStart.(l) (leftRunEnd.(l)+1) right buffer
+  done
+
+let powersortIncreasingOnlyMSB (cmp: 'a cmp) (a: 'a array) (left: int) (right: int) =
+	let n = right - left + 1 in
+ let lgnPlus2 = Base.Int.floor_log2 n + 2 in
+ let leftRunStart = Array.make lgnPlus2 null_index in
+ let leftRunEnd = Array.make lgnPlus2 0 in
+ let top = ref 0 in
+ let buffer = Array.make n a.(0) in
+
+ let startA = ref left in
+ let endA = ref (extendWeaklyIncreasingRunRight cmp a !startA right) in
+ while !endA < right do
+   let startB = !endA + 1 in
+   let endB = extendWeaklyIncreasingRunRight cmp a startB right in
+   let k = nodePower left right !startA startB endB in
+   assert (k <> !top);
+   (* clear left subtree bottom-up if needed *)
+   for l = !top downto k + 1 do
+		 if leftRunStart.(l) = null_index then ()
+     else
+       (
+			   mergeRuns cmp a leftRunStart.(l) (leftRunEnd.(l)+1) !endA buffer;
+         startA := leftRunStart.(l);
+         leftRunStart.(l) <- null_index
+	     )
+   done;
+   (* store left half of merge between A and B *)
+	 leftRunStart.(k) <- !startA; leftRunEnd.(k) <- !endA;
+   top := k;
+   startA := startB; endA := endB
+ done;
+ assert (!endA = right);
+ for l = !top downto 1 do
+	 if leftRunStart.(l) = null_index then ()
+   else mergeRuns cmp a leftRunStart.(l) (leftRunEnd.(l)+1) right buffer
+ done

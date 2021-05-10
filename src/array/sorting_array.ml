@@ -24,6 +24,14 @@ module Nom = struct
     if a <> [||] then
       NearlyOptimalMergesort.PowerSort.powersort cmp a 0 (Array.length a - 1)
 
+  let powersort_bitwise cmp a =
+    if a <> [||] then
+      NearlyOptimalMergesort.PowerSort.powersortBitWise cmp a 0 (Array.length a - 1)
+
+  let powersort_only_increasing cmp a =
+    if a <> [||] then
+      NearlyOptimalMergesort.PowerSort.powersortIncreasingOnlyMSB cmp a 0 (Array.length a - 1)
+
   let timsort cmp a =
     (* Note: Contrary to most other functions of this article, the right bound
        is exclusive in this function. *)
@@ -92,6 +100,14 @@ let all_sorters =
     { name = "nom/powersort" ;
       stable = false ;
       sorter = Nom.powersort } ;
+
+    { name = "nom/powersort (bitwise)" ;
+      stable = false ;
+      sorter = Nom.powersort_bitwise } ;
+
+    { name = "nom/powersort (only incr.)" ;
+      stable = false ;
+      sorter = Nom.powersort_only_increasing } ;
 
     { name = "nom/bu-mergesort" ;
       stable = false ;
