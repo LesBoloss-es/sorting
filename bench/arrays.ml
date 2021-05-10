@@ -2,6 +2,43 @@ open Genlib.Genarray
 open Table
 open Sorting_array
 
+let spf = Format.sprintf
+
+let usage_msg = spf "%s [OPTION ...]" Sys.argv.(0)
+
+let default_lengths = List.init 5 (fun i -> (i+ 1) * 30000)
+let lengths = ref default_lengths
+
+let set_lengths s =
+  s
+  |> String.split_on_char ','
+  |> List.map int_of_string
+  |> (:=) lengths
+
+let default_sorters = all_sorters
+let sorters = ref default_sorters
+
+let set_sorters s =
+  s
+  |> String.split_on_char ','
+  |> List.map (fun sorter_name ->
+      List.find (fun sorter -> sorter.name = sorter_name) all_sorters)
+  |> (:=) sorters
+
+let default_repeat = 50
+let repeat = ref 50
+
+let speclist =
+  Arg.[
+    "--lengths", Arg.String set_lengths, "INTS Lengths to use (default: ...)";
+    "--sorters", Arg.String set_sorters, "STRS Sorters to use (default: ...)";
+    "--repeat", Arg.Set_int repeat, spf "INT Repetitions (default: %d)" default_repeat;
+  ]
+
+let anon_fun _ = assert false
+
+let () = Arg.parse speclist anon_fun usage_msg
+
 let log2_fact n =
   let rec log2_fact res = function
     | 0 -> res
@@ -29,29 +66,15 @@ let comparisons f =
   f int_compare_count;
   float_of_int !count
 
-let lengths = List.init 5 (fun i -> (i+ 1) * 30000)
-
-let repeat = 50
+let () =
+  Format.printf "lengths:@.";
+  List.iter (Format.printf "  %d@.") !lengths
 
 let () =
-  Format.(
-    printf "lengths = %a.@."
-      (pp_print_list
-         ~pp_sep:(fun fmt () -> fprintf fmt ", ")
-         pp_print_int)
-      lengths
-  )
+  Format.printf "sorters:@.";
+  List.iteri (fun i sorter -> Format.printf "  [%d] %s@." (i+1) sorter.name) !sorters
 
-let () =
-  Format.(
-    printf "sorters = %a.@."
-      (pp_print_list
-         ~pp_sep:(fun fmt () -> fprintf fmt ", ")
-         pp_print_string)
-      (List.map (fun sorter -> sorter.name) all_sorters)
-  )
-
-let () = Format.printf "repeat = %d@." repeat
+let () = Format.printf "repeat: %d@." !repeat
 let () = Format.printf "@."
 
 type result =
@@ -94,18 +117,18 @@ let get_bench_result ~sorter ~length bench =
 let compute_benchs ~generator =
   let results = new_bench () in
   (
-    lengths |> List.iter @@ fun length ->
-    Format.printf "[%d]@?" length;
-    let inputs = List.init repeat (fun _ -> generator length) in
+    !lengths |> List.iter @@ fun length ->
+    Format.printf "[%d]@." length;
+    let inputs = List.init !repeat (fun _ -> generator length) in
     (
-      all_sorters |> List.iter @@ fun sorter ->
-      Format.printf " %s@?" sorter.name;
+      let nb_sorters = List.length !sorters in
+      !sorters |> List.iteri @@ fun i sorter ->
+      Format.printf "  [%d/%d] %s@." (i+1) nb_sorters sorter.name;
       let runtime = bench_one ~measure:runtime ~algorithm:sorter.sorter ~inputs () in
       let comparisons = bench_one ~measure:comparisons ~algorithm:sorter.sorter ~inputs () in
-      let repeat = float_of_int repeat in
+      let repeat = float_of_int !repeat in
       add_bench ~sorter ~length ~runtime:(runtime /. repeat *. 1000.) ~comparisons:(comparisons /. repeat) results
-    );
-    Format.printf "@."
+    )
   );
   results
 
@@ -117,20 +140,20 @@ let reference benchs getter length =
     (fun best sorter ->
        min best (getter (Hashtbl.find by_length sorter.name)))
     infinity
-    all_sorters
+    !sorters
 
 let build_bench_table benchs getter fmt =
   let heading =
     string_cell "lengths"
     :: string_cell "stable"
-    :: list_concat_map (fun length -> [ int_cell length ; string_cell "%" ]) lengths
+    :: list_concat_map (fun length -> [ int_cell length ; string_cell "%" ]) !lengths
   in
   let content =
-    all_sorters |> List.map @@ fun sorter ->
+    !sorters |> List.map @@ fun sorter ->
     string_cell sorter.name
     :: string_cell (if sorter.stable then "yes" else "no")
     :: (
-      lengths |> list_concat_map @@ fun length ->
+      !lengths |> list_concat_map @@ fun length ->
       let reference = reference benchs getter length in
       let result = getter (get_bench_result ~sorter ~length benchs) in
       let slowdown = Format.sprintf "%.0f" (slowdown ~from:reference ~to_:result) in
@@ -143,7 +166,7 @@ let build_bench_table benchs getter fmt =
 let cell_styles =
   ("", Left)
   :: (" | ", Right)
-  :: (List.map (fun _ -> [ (" | ", Right) ; (" ", Right) ]) lengths
+  :: (List.map (fun _ -> [ (" | ", Right) ; (" ", Right) ]) !lengths
       |> List.flatten)
 
 let print_bench_table title benchs getter fmt =
